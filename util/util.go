@@ -1,4 +1,4 @@
-package bootstrap
+package util
 
 import (
 	"log"
@@ -34,6 +34,7 @@ type TelegramSettings struct {
 	Endpoint       string
 	Botname        string
 	PersonalChatID int64
+	GroupChatID    int64
 }
 
 var (
@@ -95,6 +96,12 @@ func getAppSettings() AppsSettings {
 		log.Fatal("TELEGRAM_PERSONAL_CHAT_ID is not set")
 	}
 
+	telegramGroupChatIdStr := os.Getenv("TELEGRAM_GROUP_CHAT_ID")
+	telegramGroupChatId, err := strconv.ParseInt(telegramGroupChatIdStr, 10, 64)
+	if err != nil {
+		log.Fatal("TELEGRAM_PERSONAL_CHAT_ID is not set")
+	}
+
 	return AppsSettings{
 		DBSettings: DatabaseSettings{
 			Host: dbHost,
@@ -110,6 +117,7 @@ func getAppSettings() AppsSettings {
 			Endpoint:       telegramEndpoint,
 			Botname:        telegramBotname,
 			PersonalChatID: telegramPersonalChatId,
+			GroupChatID:    telegramGroupChatId,
 		},
 	}
 }

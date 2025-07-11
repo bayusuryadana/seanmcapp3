@@ -7,6 +7,7 @@ import (
 	"seanmcapp/external"
 	"seanmcapp/repository"
 	"seanmcapp/service"
+	"seanmcapp/util"
 
 	_ "github.com/lib/pq"
 )
@@ -15,9 +16,10 @@ type MainServices struct {
 	WarmupDBService service.WarmupDBService
 	BirthdayService service.BirthdayService
 	WalletService   service.WalletService
+	NewsService     service.NewsService
 }
 
-func GetMainServices(settings AppsSettings) (MainServices, *sql.DB) {
+func GetMainServices(settings util.AppsSettings) (MainServices, *sql.DB) {
 
 	connStr := fmt.Sprintf(
 		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
@@ -37,11 +39,13 @@ func GetMainServices(settings AppsSettings) (MainServices, *sql.DB) {
 	warmupDBService := &service.WarmupDBServiceImpl{PeopleRepo: peopleRepo}
 	birthdayService := &service.BirthdayServiceImpl{PeopleRepo: peopleRepo, TelegramClient: telegramClient, ChatId: settings.TelegramSettings.PersonalChatID}
 	walletService := &service.WalletServiceImpl{WalletRepo: walletRepo}
+	newsService := &service.NewsServiceImpl{TelegramClient: telegramClient}
 
 	return MainServices{
 		WarmupDBService: warmupDBService,
 		BirthdayService: birthdayService,
 		WalletService:   walletService,
+		NewsService:     newsService,
 	}, db
 
 }

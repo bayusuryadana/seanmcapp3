@@ -16,6 +16,7 @@ func InitScheduler(mainServices MainServices) {
 		{Task: mainServices.WarmupDBService, CronExpr: "0 * * * * *", Repeat: false},
 		{Task: mainServices.WarmupDBService, CronExpr: "*/5 * * * * *", Repeat: false},
 		{Task: mainServices.BirthdayService, CronExpr: "0 0 8 * * *", Repeat: true},
+		{Task: mainServices.NewsService, CronExpr: "0 0 9 * * *", Repeat: true},
 	}
 
 	for _, s := range schedulers {
