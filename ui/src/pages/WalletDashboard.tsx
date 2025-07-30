@@ -1,12 +1,12 @@
 import { Container, Alert, Grid, Paper, Typography } from "@mui/material"
-import Chart from "./Chart"
-import { Detail } from "./Detail"
-import { Title } from "./Title"
-import { WalletPlanned, WalletDetail, WalletDashboardData, WalletAlert } from "./model"
-import { WalletModal } from "./Modal"
+import Chart from "../components/Chart.tsx"
+import { Detail } from "../components/Detail.tsx"
+import { Title } from "../components/Title.tsx"
+import { WalletPlanned, WalletDetail, WalletDashboardData, WalletAlert } from "../utils/model.ts"
+import { WalletModal } from "../components/Modal.tsx"
 import axios from "axios"
 import { useContext, useEffect, useState } from "react"
-import { UserContext, UserContextType } from "./UserContext"
+import { UserContext, UserContextType } from "../UserContext.tsx"
 
 export const WalletDashboard = () => {
 

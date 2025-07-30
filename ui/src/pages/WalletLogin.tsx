@@ -1,12 +1,12 @@
-import { defaultTheme } from "./constant"
+import { defaultTheme } from "../utils/constant.ts"
 import CssBaseline from '@mui/material/CssBaseline';
-import { AppBar } from './AppBar';
+import { AppBar } from '../components/AppBar.tsx';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
 import { useContext, useState, FormEvent } from 'react';
 import { Navigate } from "react-router-dom";
 import axios from "axios";
 import { Alert, Paper, Avatar, Button, ThemeProvider, Box, Toolbar, Typography, TextField } from "@mui/material";
-import { UserContext, UserContextType } from "./UserContext";
+import { UserContext, UserContextType } from "../UserContext.tsx";
 
 export const WalletLogin = (_props: any) => {
   const  { userContext, savePassword } = useContext(UserContext) as UserContextType;

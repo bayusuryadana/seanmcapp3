@@ -1,9 +1,9 @@
 import { Button, Modal, Box, Typography, Alert, TextField, MenuItem, Select, Grid, InputLabel, FormControlLabel, Checkbox } from "@mui/material";
 import axios from "axios";
 import { useContext, useState, FormEvent, useEffect } from "react";
-import { UserContext, UserContextType } from "./UserContext";
-import { WalletDetail } from "./model";
-import { modalStyle } from "./constant";
+import { UserContext, UserContextType } from "../UserContext.tsx";
+import { WalletDetail } from "../utils/model.ts";
+import { modalStyle } from "../utils/constant.ts";
 
 interface WalletModalProps {
   onClose: () => void

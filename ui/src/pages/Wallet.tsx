@@ -1,11 +1,11 @@
 import { ThemeProvider } from '@mui/material/styles';
-import { defaultTheme } from './constant';
+import { defaultTheme } from '../utils/constant';
 import { useContext, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
-import { UserContext, UserContextType } from './UserContext';
+import { UserContext, UserContextType } from '../UserContext';
 import { Box, CssBaseline, Toolbar } from '@mui/material';
-import { WalletAppBar } from './AppBar';
-import { WalletDrawer } from './Drawer';
+import { WalletAppBar } from '../components/AppBar';
+import { WalletDrawer } from '../components/Drawer';
 
 export const Wallet = () => {
     const { userContext, savePassword } = useContext(UserContext) as UserContextType;

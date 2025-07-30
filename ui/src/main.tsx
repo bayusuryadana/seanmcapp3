@@ -1,12 +1,12 @@
 import ReactDOM from 'react-dom/client'
-import { Home } from './Home.tsx'
+import { Home } from './Home'
 import './index.css'
 import { createBrowserRouter, RouterProvider } from "react-router-dom"
-import { Wallet } from './wallet/Wallet.tsx'
-import { WalletLogin } from './wallet/WalletLogin.tsx'
-import { UserProvider } from './wallet/UserContext.tsx'
+import { Wallet } from './pages/Wallet'
+import { WalletLogin } from './pages/WalletLogin'
+import { UserProvider } from './UserContext'
 import { StrictMode } from 'react'
-import { WalletDashboard } from './wallet/WalletDashboard.tsx'
+import { WalletDashboard } from './pages/WalletDashboard'
 
 const router = createBrowserRouter([
   {

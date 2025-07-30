@@ -1,7 +1,7 @@
 import { useTheme } from '@mui/material/styles';
 import { LineChart, Line, XAxis, YAxis, Label, ResponsiveContainer } from 'recharts';
-import { Title } from './Title';
-import { WalletChartBalance } from './model';
+import { Title } from './Title.tsx';
+import { WalletChartBalance } from '../utils/model.ts';
 import { Fragment } from 'react';
 
 interface ChartProps {

@@ -1,5 +1,5 @@
 import { Title } from './Title';
-import { WalletDetail, WalletPlanned } from './model';
+import { WalletDetail, WalletPlanned } from '../utils/model';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';

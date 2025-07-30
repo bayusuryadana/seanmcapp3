@@ -1,6 +1,6 @@
 import MuiDrawer from '@mui/material/Drawer';
 import { styled } from '@mui/material/styles';
-import { drawerWidth } from './constant';
+import { drawerWidth } from '../utils/constant.ts';
 import { Toolbar, IconButton, Divider, List, ListItemButton, ListItemIcon, ListItemText } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 // import BarChartIcon from '@mui/icons-material/BarChart';
