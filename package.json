@@ -1,0 +1,7 @@
+{
+  "name": "seanmcappui",
+  "private": true,
+  "scripts": {
+    "heroku-postbuild": "cd ui && yarn install && yarn build"
+  }
+}

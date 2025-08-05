@@ -1,9 +1,0 @@
-build:
-  languages:
-    - nodejs
-    - go
-  steps:
-    - cd ui && yarn install && yarn build
-
-run:
-  web: ./seanmcapp
