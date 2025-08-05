@@ -7,6 +7,7 @@ import { WalletModal } from "../components/Modal.tsx"
 import axios from "axios"
 import { useContext, useEffect, useState } from "react"
 import { UserContext, UserContextType } from "../UserContext.tsx"
+import { API_URL } from "../utils/constant.ts"
 
 export const WalletDashboard = () => {
 
@@ -38,7 +39,7 @@ export const WalletDashboard = () => {
   }
 
   const getWalletDashboard = (dateParam: string) => {
-    axios.get('http://localhost:8080/api/wallet/dashboard', {
+    axios.get(API_URL + '/api/wallet/dashboard', {
       headers: {
         Authorization: 'Bearer ' + (userContext ?? "")
       },
@@ -103,7 +104,7 @@ export const WalletDashboard = () => {
                 updateDashboard={getWalletDashboard}
                 createHandler={() => {setWalletDetail({ id: -1 } as WalletDetail)}}
                 editHandler={(walletDetail: WalletDetail) => {setWalletDetail(walletDetail)}} 
-                deleteHandler={(id: Number) => {setWalletDetail({ id: id} as WalletDetail)}} 
+                deleteHandler={(id: Number) => {setWalletDetail({ id: id } as WalletDetail)}} 
               />
             </Paper>
           </Grid>

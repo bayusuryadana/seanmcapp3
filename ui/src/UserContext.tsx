@@ -5,20 +5,27 @@ interface Props {
 }
 
 export const UserProvider: FC<Props> = ({ children }) => {
-    const [userContext, setPassword] = useState<string|null>(null)
+    const [userContext, setToken] = useState<string|null>(() => {
+        return localStorage.getItem('token');
+    })
 
-    const savePassword = (password: string|null) => {
-        setPassword(password)
+    const saveToken = (token: string|null) => {
+        setToken(token);
+        if (token) {
+            localStorage.setItem('token', token);
+        } else {
+            localStorage.removeItem('token');
+        }
     }
 
-    return <UserContext.Provider value={{ userContext, savePassword}}>
+    return <UserContext.Provider value={{ userContext, saveToken}}>
         {children}
     </UserContext.Provider>
 }
 
 export type UserContextType = {
     userContext: string|null;
-    savePassword: (password: string|null) => void;
+    saveToken: (token: string|null) => void;
 }
 
 export const UserContext = createContext<UserContextType|null>(null);

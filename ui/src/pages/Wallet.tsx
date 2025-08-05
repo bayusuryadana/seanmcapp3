@@ -8,11 +8,11 @@ import { WalletAppBar } from '../components/AppBar';
 import { WalletDrawer } from '../components/Drawer';
 
 export const Wallet = () => {
-    const { userContext, savePassword } = useContext(UserContext) as UserContextType;
+    const { userContext, saveToken } = useContext(UserContext) as UserContextType;
     const [open, setOpen] = useState(false);
 
     const toggleDrawer = () => setOpen(!open)
-    const logoutHandler = () => savePassword(null)
+    const logoutHandler = () => saveToken(null)
 
     if (userContext != null) {
       return (

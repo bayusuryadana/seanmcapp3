@@ -1,4 +1,4 @@
-import { defaultTheme } from "../utils/constant.ts"
+import { API_URL, defaultTheme } from "../utils/constant.ts"
 import CssBaseline from '@mui/material/CssBaseline';
 import { AppBar } from '../components/AppBar.tsx';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
@@ -9,7 +9,7 @@ import { Alert, Paper, Avatar, Button, ThemeProvider, Box, Toolbar, Typography, 
 import { UserContext, UserContextType } from "../UserContext.tsx";
 
 export const WalletLogin = (_props: any) => {
-  const  { userContext, savePassword } = useContext(UserContext) as UserContextType;
+  const  { userContext, saveToken } = useContext(UserContext) as UserContextType;
   const [alert, setAlert] = useState({display: 'none', text:''})
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -17,10 +17,10 @@ export const WalletLogin = (_props: any) => {
     const data = new FormData(event.currentTarget);
     const inputPassword = data.get('password')?.toString() ?? ""
 
-    axios.get('http://localhost:8080/api/wallet/login/' + inputPassword)
+    axios.get(API_URL + '/api/wallet/login/' + inputPassword)
     .then((response) => {
       setAlert({ display: 'none', text: '' })
-      savePassword(response.data)
+      saveToken(response.data)
     })
     .catch((error) => {
       console.log(error);

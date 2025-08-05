@@ -94,6 +94,7 @@ export const Detail = (props: DetailProps) => {
     } else {
       props.updateDashboard(input)
       setAlert({display: 'none', text: ''})
+      handleClose()
     }
   }
 
@@ -108,7 +109,7 @@ export const Detail = (props: DetailProps) => {
             <ArrowLeftIcon />
           </IconButton>
           <Button aria-describedby={id} variant="contained" onClick={handleClick}>
-          {convertTitle(props.date)}
+            {convertTitle(props.date)}
           </Button>
           <Popover
             id={id}
