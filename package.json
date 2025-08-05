@@ -2,7 +2,7 @@
   "name": "seanmcappui",
   "private": true,
   "scripts": {
-    "heroku-postbuild": "cd ui && yarn install && yarn build"
+    "heroku-postbuild": "cd ui && install && build"
   },
   "engines": {
     "node": "22.14.0"
