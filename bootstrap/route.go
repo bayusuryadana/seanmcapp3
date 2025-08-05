@@ -2,6 +2,7 @@ package bootstrap
 
 import (
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"seanmcapp/service"
@@ -91,7 +92,14 @@ func InitRouter(mainServices MainServices) {
 		}
 	}
 
-	r.Run(":8080")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // fallback for local dev
+	}
+
+	if err := r.Run(":" + port); err != nil {
+		log.Fatal(err)
+	}
 }
 
 // Auth Middleware
