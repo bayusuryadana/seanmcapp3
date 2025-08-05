@@ -3,5 +3,8 @@
   "private": true,
   "scripts": {
     "heroku-postbuild": "cd ui && yarn install && yarn build"
+  },
+  "engines": {
+    "node": "18.x"
   }
 }
