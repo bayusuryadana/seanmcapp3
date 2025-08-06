@@ -1,27 +1,49 @@
-import { ReactNode, useState, FC, createContext } from "react";
+import { ReactNode, useState, FC, createContext, useEffect } from "react";
 
 interface Props {
     children: ReactNode
 }
 
 export const UserProvider: FC<Props> = ({ children }) => {
-    const [userContext, setToken] = useState<string|null>(() => {
-        return localStorage.getItem('token');
-    })
+    const [userContext, setUserContext] = useState<string | null>(null);
 
-    const saveToken = (token: string|null) => {
-        setToken(token);
-        if (token) {
-            localStorage.setItem('token', token);
-        } else {
-            localStorage.removeItem('token');
+    useEffect(() => {
+        const token = localStorage.getItem("token");
+        const expiry = localStorage.getItem("tokenExpiry");
+
+        if (token && expiry) {
+            const now = Date.now();
+            if (now < Number(expiry)) {
+                setUserContext(token);
+            } else {
+                // expired, clear it
+                localStorage.removeItem("token");
+                localStorage.removeItem("tokenExpiry");
+            }
         }
-    }
+    }, []);
 
-    return <UserContext.Provider value={{ userContext, saveToken}}>
-        {children}
-    </UserContext.Provider>
-}
+    const saveToken = (token: string | null) => {
+        if (token) {
+            setUserContext(token);
+            localStorage.setItem("token", token);
+            localStorage.setItem(
+                "tokenExpiry",
+                String(Date.now() + 12 * 60 * 60 * 1000) // 12 hours in ms
+            );
+        } else {
+            setUserContext(null);
+            localStorage.removeItem("token");
+            localStorage.removeItem("tokenExpiry");
+        }
+    };
+
+    return (
+        <UserContext.Provider value={{ userContext, saveToken }}>
+            {children}
+        </UserContext.Provider>
+    );
+};
 
 export type UserContextType = {
     userContext: string|null;
