@@ -2,27 +2,19 @@
 Port application from [seanmcapp](https://github.com/bayusuryadana/seanmcapp)
 
 ## Feature (WIP)
-done:
-	api:
-		!news
-		wallet
-	scheduler:
-		!instagram
-		birthday
-	web:
-		home(web)
-		wallet(web)
+- Api: telegram webhook (bot)
+- Scheduler: birthday, news
+- Web: wallet
 
 next-up:
-	portofolio(web + scheduler)
+	instagram
 
 deprecated:
-	cbc
-	dota + dota(web)
-	hadith
-	telegram webhook
-	discord
-	instagram + twitter (logged in) -> cache cleaner
+- cbc
+- dota + dota(web)
+- hadith
+- discord
+- twitter (logged in) 
 
 ## Setup
 1. Install Go
