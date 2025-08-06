@@ -72,7 +72,7 @@ func (s *NewsServiceImpl) Run() {
 		for _, f := range res.NewsSource.Flag() {
 			flags += string(rune(f))
 		}
-		message += fmt.Sprintf("%s %s - [%s](%s)\n\n", flags, res.NewsSource.Name(), res.Title, res.URL)
+		message += fmt.Sprintf("%s %s - [%s](%s)\n\n", flags, res.NewsSource.Name(), strings.TrimSpace(res.Title), res.URL)
 	}
 
 	groupChatId := util.GetAppSettings().TelegramSettings.GroupChatID
