@@ -1,5 +1,5 @@
 import { useTheme } from '@mui/material/styles';
-import { LineChart, Line, XAxis, YAxis, Label, ResponsiveContainer } from 'recharts';
+import { AreaChart, XAxis, YAxis, Label, ResponsiveContainer, Area, CartesianGrid } from 'recharts';
 import { Title } from './Title.tsx';
 import { WalletChartBalance } from '../utils/model.ts';
 import { Fragment } from 'react';
@@ -16,7 +16,7 @@ export default function Chart(props: ChartProps) {
     <Fragment>
       <Title>Balance</Title>
       <ResponsiveContainer>
-        <LineChart
+        <AreaChart
           data={props.data.sort((a,b) => a.date-b.date)}
           margin={{
             top: 16,
@@ -47,14 +47,15 @@ export default function Chart(props: ChartProps) {
               Balance (S$)
             </Label>
           </YAxis>
-          <Line
+          <CartesianGrid strokeDasharray="3 3" />
+          <Area
             isAnimationActive={false}
             type="monotone"
             dataKey="sum"
             stroke={theme.palette.primary.main}
-            dot={false}
+            dot={true}
           />
-        </LineChart>
+        </AreaChart>
       </ResponsiveContainer>
     </Fragment>
   );

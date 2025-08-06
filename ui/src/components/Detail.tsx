@@ -3,7 +3,7 @@ import { WalletDetail, WalletPlanned } from '../utils/model';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { Grid, IconButton, TableRow, TableHead, TableCell, TableBody, Table, Button, Popover, Box, Alert, TextField, Typography } from '@mui/material';
+import { Grid, IconButton, TableRow, TableHead, TableCell, TableBody, Table, Button, Popover, Box, Alert, TextField, Typography, TableContainer } from '@mui/material';
 import ArrowLeftIcon from '@mui/icons-material/ArrowLeft';
 import ArrowRightIcon from '@mui/icons-material/ArrowRight';
 import { FormEvent, Fragment, useState } from 'react';
@@ -140,38 +140,38 @@ export const Detail = (props: DetailProps) => {
           </IconButton>
         </Grid>
       </Grid>
-      <Table size="small">
-        <TableHead>
-          <TableRow>
-            <TableCell>Name</TableCell>
-            <TableCell>Category</TableCell>
-            <TableCell>Currency</TableCell>
-            <TableCell>Account</TableCell>
-            <TableCell align="right">Amount</TableCell>
-            <TableCell></TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {props.rows.map((row) => (
-            <TableRow key={row.id}>
-              <TableCell><CellTypography done={row.done}>{row.name}</CellTypography></TableCell>
-              <TableCell><CellTypography done={row.done}>{row.category}</CellTypography></TableCell>
-              <TableCell><CellTypography done={row.done}>{row.currency}</CellTypography></TableCell>
-              <TableCell><CellTypography done={row.done}>{row.account}</CellTypography></TableCell>
-              <TableCell align="right"><CellTypography done={row.done}>{row.amount}</CellTypography></TableCell>
-              <TableCell>
-                <IconButton aria-label="edit" color="primary" onClick={()=>props.editHandler(row)}>
-                  <EditIcon />
-                </IconButton>
-                <IconButton aria-label="delete" color="secondary" onClick={()=>props.deleteHandler(row.id)}>
-                  <DeleteIcon />
-                </IconButton>
-              </TableCell>
+      <TableContainer sx={{ overflowX: 'auto' }}>
+        <Table size="small">
+          <TableHead>
+            <TableRow>
+              <TableCell>Name</TableCell>
+              <TableCell>Category</TableCell>
+              <TableCell>Currency</TableCell>
+              <TableCell align="right">Amount</TableCell>
+              <TableCell></TableCell>
             </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-      <Typography sx={{ p: 2 }}>
+          </TableHead>
+          <TableBody>
+            {props.rows.map((row) => (
+              <TableRow key={row.id}>
+                <TableCell><CellTypography done={row.done}>{row.name}</CellTypography></TableCell>
+                <TableCell><CellTypography done={row.done}>{row.category}</CellTypography></TableCell>
+                <TableCell><CellTypography done={row.done}>{row.currency}</CellTypography></TableCell>
+                <TableCell align="right"><CellTypography done={row.done}>{row.amount.toLocaleString()}</CellTypography></TableCell>
+                <TableCell sx={{ whiteSpace: "nowrap" }}>
+                  <IconButton aria-label="edit" color="primary" onClick={()=>props.editHandler(row)}>
+                    <EditIcon />
+                  </IconButton>
+                  <IconButton aria-label="delete" color="secondary" onClick={()=>props.deleteHandler(row.id)}>
+                    <DeleteIcon />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+      <Typography sx={{ p: 2, fontSize: { xs: "0.75rem", sm: "0.875rem" }, }}>
         Cash balance end of month | SGD: <b>S$ {props.planned.sgd.toLocaleString()}</b> | IDR: <b>Rp. {props.planned.idr.toLocaleString()}</b>
       </Typography>
     </Fragment>

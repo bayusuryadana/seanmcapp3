@@ -18,6 +18,6 @@ interface CellTypographyProps {
     }
 
     return (
-        <Typography sx={{color: getColor()}}>{props.children}</Typography>
+        <Typography sx={{color: getColor(), fontSize: { xs: "0.75rem", sm: "0.875rem" }, }} >{props.children}</Typography>
     );
   }

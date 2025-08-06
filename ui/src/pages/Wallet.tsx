@@ -1,17 +1,13 @@
 import { ThemeProvider } from '@mui/material/styles';
 import { defaultTheme } from '../utils/constant';
-import { useContext, useState } from 'react';
+import { useContext } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { UserContext, UserContextType } from '../UserContext';
 import { Box, CssBaseline, Toolbar } from '@mui/material';
 import { WalletAppBar } from '../components/AppBar';
-import { WalletDrawer } from '../components/Drawer';
 
 export const Wallet = () => {
     const { userContext, saveToken } = useContext(UserContext) as UserContextType;
-    const [open, setOpen] = useState(false);
-
-    const toggleDrawer = () => setOpen(!open)
     const logoutHandler = () => saveToken(null)
 
     if (userContext != null) {
@@ -19,8 +15,7 @@ export const Wallet = () => {
         <ThemeProvider theme={defaultTheme}>
           <Box sx={{ display: 'flex' }}>
             <CssBaseline />
-            <WalletAppBar open={open} toggleDrawer={toggleDrawer} logoutHandler={logoutHandler} />
-            <WalletDrawer open={open} toggleDrawer={toggleDrawer} />
+            <WalletAppBar logoutHandler={logoutHandler} />
             <Box component="main" sx={{
                 backgroundColor: (theme) =>
                   theme.palette.mode === 'light'

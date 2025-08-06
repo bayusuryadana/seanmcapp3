@@ -2,7 +2,6 @@ import MuiAppBar, { AppBarProps as MuiAppBarProps } from '@mui/material/AppBar';
 import { styled } from '@mui/material/styles';
 import { drawerWidth } from '../utils/constant.ts';
 import { Toolbar, IconButton, Typography } from '@mui/material';
-import MenuIcon from '@mui/icons-material/Menu';
 import LogoutIcon from '@mui/icons-material/Logout';
 
 interface AppBarProps extends MuiAppBarProps {
@@ -28,23 +27,13 @@ export const AppBar = styled(MuiAppBar, {
 }));
 
 interface WalletAppBarProps {
-  open: boolean
-  toggleDrawer: () => void
   logoutHandler: () => void
 }
 
 export const WalletAppBar = (props: WalletAppBarProps) => {
   return (
-    <AppBar position="absolute" open={props.open}>
+    <AppBar position="absolute" open={false}>
       <Toolbar sx={{ pr: '24px', }}>
-        <IconButton 
-          edge="start" 
-          color="inherit" 
-          aria-label="open drawer" 
-          onClick={props.toggleDrawer} 
-          sx={{ marginRight: '36px', ...({open} && { display: 'true' }),}}>
-          <MenuIcon />
-        </IconButton>
         <Typography component="h1" variant="h6" color="inherit" noWrap sx={{ flexGrow: 1 }}>
           Seanmcwallet
         </Typography>
