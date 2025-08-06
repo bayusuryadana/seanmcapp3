@@ -1,15 +1,16 @@
 # Seanmcapp3
 Port application from [seanmcapp](https://github.com/bayusuryadana/seanmcapp)
 
-## Feature (WIP)
+## Feature
+### Existing
 - Api: telegram webhook (bot)
 - Scheduler: birthday, news
 - Web: wallet
 
-next-up:
-	instagram
+### Roadmap 
+- instagram fetcher
 
-deprecated:
+### Deprecated
 - cbc
 - dota + dota(web)
 - hadith
