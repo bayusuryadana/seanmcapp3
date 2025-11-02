@@ -24,7 +24,7 @@ func (s *StockServiceImpl) GetAll() ([]DashboardStock, error) {
 	return dashboardStocks, err
 }
 
-func (s *StockServiceImpl) Insert(stock DashboardStock) (string, error) {
+func (s *StockServiceImpl) Create(stock DashboardStock) (string, error) {
 	st := repository.Stock(stock)
 	return s.StockRepo.Create(st)
 }
