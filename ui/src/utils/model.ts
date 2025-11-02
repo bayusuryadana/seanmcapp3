@@ -4,6 +4,7 @@ export type WalletDashboardData = {
   savings: WalletSavings;
   planned: WalletPlanned;
   detail: WalletDetail[];
+  stocks: WalletStock[]
 }
 
 export type WalletChart = {
@@ -40,6 +41,14 @@ export type WalletDetail = {
   amount: number;
   done: boolean;
   account: string;
+}
+
+export type WalletStock = {
+  name: string;
+  best_price?: number;
+  current_price?: number;
+  fair_price?: number;
+  status: boolean;
 }
 
 export type WalletAlert = {

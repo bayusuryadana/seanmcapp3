@@ -15,6 +15,7 @@ type WalletService interface {
 
 type WalletServiceImpl struct {
 	WalletRepo repository.WalletRepo
+	StockRepo  repository.StockRepo
 }
 
 var expenseSet = map[string]struct{}{
@@ -76,6 +77,12 @@ func (s *WalletServiceImpl) Dashboard(date int) (*DashboardView, error) {
 		}
 	}
 
+	var dashboardStocks []DashboardStock
+	stocks, err := s.StockRepo.GetAll()
+	for _, stock := range stocks {
+		dashboardStocks = append(dashboardStocks, DashboardStock(stock))
+	}
+
 	return &DashboardView{
 		Chart: DashboardChart{
 			BalanceHistory: dashboardBalance,
@@ -84,6 +91,7 @@ func (s *WalletServiceImpl) Dashboard(date int) (*DashboardView, error) {
 		Savings:     DashboardSavings{DBS: currentDBS, BCA: currentBCA},
 		Planned:     DashboardPlanned{SGD: plannedSGD, IDR: plannedIDR},
 		Wallets:     dashboardWallets,
+		Stocks:      dashboardStocks,
 	}, nil
 }
 
@@ -106,8 +114,8 @@ func calculateBalance(wallets []repository.Wallet, upToDate int) []DashboardBala
 		total += b.Sum
 		cumulative = append(cumulative, DashboardBalance{Date: b.Date, Sum: total})
 	}
-	if len(cumulative) > 6 {
-		cumulative = cumulative[len(cumulative)-6:]
+	if len(cumulative) > 3 {
+		cumulative = cumulative[len(cumulative)-3:]
 	}
 	sort.Slice(cumulative, func(i, j int) bool { return cumulative[i].Date > cumulative[j].Date })
 	return cumulative
@@ -149,6 +157,7 @@ type DashboardView struct {
 	Savings     DashboardSavings       `json:"savings"`
 	Planned     DashboardPlanned       `json:"planned"`
 	Wallets     []DashboardWallet      `json:"detail"`
+	Stocks      []DashboardStock       `json:"stocks"`
 }
 
 type DashboardChart struct {
