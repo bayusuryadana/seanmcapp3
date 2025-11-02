@@ -39,10 +39,10 @@ func GetMainServices(settings util.AppsSettings) (MainServices, *sql.DB) {
 	telegramClient := &external.TelegramClientImpl{Endpoint: settings.TelegramSettings.Endpoint, Botname: settings.TelegramSettings.Botname}
 
 	warmupDBService := &service.WarmupDBServiceImpl{PeopleRepo: peopleRepo}
-	birthdayService := &service.BirthdayServiceImpl{PeopleRepo: peopleRepo, TelegramClient: telegramClient, ChatId: settings.TelegramSettings.PersonalChatID}
+	birthdayService := &service.BirthdayServiceImpl{PeopleRepo: peopleRepo, TelegramClient: telegramClient}
 	walletService := &service.WalletServiceImpl{WalletRepo: walletRepo}
 	newsService := &service.NewsServiceImpl{TelegramClient: telegramClient}
-	stockService := &service.StockServiceImpl{StockRepo: stockRepo}
+	stockService := &service.StockServiceImpl{StockRepo: stockRepo, TelegramClient: telegramClient}
 
 	return MainServices{
 		WarmupDBService: warmupDBService,

@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"seanmcapp/external"
 	"seanmcapp/repository"
+	"seanmcapp/util"
 	"strings"
 
 	"github.com/tidwall/gjson"
@@ -24,7 +25,6 @@ type StockService interface {
 type StockServiceImpl struct {
 	StockRepo      repository.StockRepo
 	TelegramClient external.TelegramClient
-	ChatId         int64
 }
 
 var urlTemplate = "https://query1.finance.yahoo.com/v8/finance/chart/{{name}}.jk"
@@ -95,7 +95,8 @@ func (s *StockServiceImpl) Run() {
 	if len(result) > 0 {
 		log.Println("[INFO] stocks hit/reach")
 		finalResult := strings.Join(result, "\n")
-		_, err := s.TelegramClient.SendMessage(s.ChatId, finalResult)
+		personalChatId := util.GetAppSettings().TelegramSettings.PersonalChatID
+		_, err := s.TelegramClient.SendMessage(personalChatId, finalResult)
 		if err != nil {
 			log.Printf("[ERROR] cannot send message for the final result: %v\n", err)
 		}
