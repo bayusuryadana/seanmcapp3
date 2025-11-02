@@ -2,17 +2,28 @@ package bootstrap
 
 import (
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"seanmcapp/service"
 	"seanmcapp/util"
 	"strconv"
+	"time"
 
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
 func InitRouter(mainServices MainServices) {
 	r := gin.Default()
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:8080", "https://seanmcapp.herokuapp.com"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// Frontend routes
 	r.GET("/", serveIndex)
@@ -116,12 +127,25 @@ func InitRouter(mainServices MainServices) {
 		}
 	}
 
-	r.Run(":8080")
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080" // fallback for local dev
+	}
+
+	if err := r.Run(":" + port); err != nil {
+		log.Fatal(err)
+	}
 }
 
 // Auth Middleware
 func authMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
+		if c.Request.Method == http.MethodOptions {
+			// Let preflight through
+			c.AbortWithStatus(http.StatusOK)
+			return
+		}
+
 		token := c.GetHeader("Authorization")
 		if !util.JwtValidateToken(util.GetAppSettings().WalletSettings, token) {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})

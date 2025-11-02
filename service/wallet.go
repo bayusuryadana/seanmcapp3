@@ -1,6 +1,7 @@
 package service
 
 import (
+	"log"
 	"seanmcapp/repository"
 	"sort"
 )
@@ -17,20 +18,51 @@ type WalletServiceImpl struct {
 }
 
 var expenseSet = map[string]struct{}{
-	"Daily": {}, "Rent": {}, "Zakat": {}, "Travel": {}, "Fashion": {},
+	"Daily": {}, "Rent": {}, "Travel": {}, "Fashion": {},
 	"IT Stuff": {}, "Misc": {}, "Wellness": {}, "Funding": {},
 }
 
 func (s *WalletServiceImpl) Dashboard(date int) (*DashboardView, error) {
 	wallets, err := s.WalletRepo.GetAll()
 	if err != nil {
+		log.Println("Failed to fetch wallet", err)
 		return nil, err
 	}
 
 	dashboardBalance := calculateBalance(wallets, date)
 	year := date / 100
-	lastYearExpenses := calculateCategoryAmount(wallets, year-1)
-	ytdExpenses := calculateCategoryAmount(wallets, year)
+
+	ytdExpenses := make(map[string]int)
+	for _, w := range wallets {
+		if w.Done && (w.Date/100) == year {
+			if _, ok := expenseSet[w.Category]; ok {
+				switch w.Account {
+				case "DBS":
+					ytdExpenses[w.Category] -= w.Amount
+				case "BCA":
+					currExchange := w.Amount / 12700 // need to change every year
+					ytdExpenses[w.Category] -= currExchange
+				}
+			}
+		}
+	}
+
+	ytdAlloc, err := s.WalletRepo.GetAllocations()
+	if err != nil {
+		log.Println("Failed to fetch allocations", err)
+		return nil, err
+	}
+
+	// fixed order
+	categories := []string{"Daily", "Rent", "Travel", "Fashion", "IT Stuff", "Misc", "Wellness", "Funding"}
+	var alloc []DashboardAllocations
+	for _, cat := range categories {
+		alloc = append(alloc, DashboardAllocations{
+			Name:    cat,
+			Expense: ytdExpenses[cat],
+			Alloc:   ytdAlloc[cat],
+		})
+	}
 
 	currentDBS := calculateTotalAmount(wallets, "DBS", nil)
 	currentBCA := calculateTotalAmount(wallets, "BCA", nil)
@@ -46,13 +78,12 @@ func (s *WalletServiceImpl) Dashboard(date int) (*DashboardView, error) {
 
 	return &DashboardView{
 		Chart: DashboardChart{
-			BalanceHistory:   dashboardBalance,
-			LastYearExpenses: lastYearExpenses,
-			YTDExpenses:      ytdExpenses,
+			BalanceHistory: dashboardBalance,
 		},
-		Savings: DashboardSavings{DBS: currentDBS, BCA: currentBCA},
-		Planned: DashboardPlanned{SGD: plannedSGD, IDR: plannedIDR},
-		Wallets: dashboardWallets,
+		Allocations: alloc,
+		Savings:     DashboardSavings{DBS: currentDBS, BCA: currentBCA},
+		Planned:     DashboardPlanned{SGD: plannedSGD, IDR: plannedIDR},
+		Wallets:     dashboardWallets,
 	}, nil
 }
 
@@ -75,23 +106,11 @@ func calculateBalance(wallets []repository.Wallet, upToDate int) []DashboardBala
 		total += b.Sum
 		cumulative = append(cumulative, DashboardBalance{Date: b.Date, Sum: total})
 	}
-	if len(cumulative) > 12 {
-		cumulative = cumulative[len(cumulative)-12:]
+	if len(cumulative) > 6 {
+		cumulative = cumulative[len(cumulative)-6:]
 	}
 	sort.Slice(cumulative, func(i, j int) bool { return cumulative[i].Date > cumulative[j].Date })
 	return cumulative
-}
-
-func calculateCategoryAmount(wallets []repository.Wallet, year int) map[string]int {
-	result := make(map[string]int)
-	for _, w := range wallets {
-		if w.Account == "DBS" && w.Done && (w.Date/100) == year {
-			if _, ok := expenseSet[w.Category]; ok {
-				result[w.Category] -= w.Amount
-			}
-		}
-	}
-	return result
 }
 
 func calculateTotalAmount(wallets []repository.Wallet, account string, date *int) int {
@@ -125,16 +144,21 @@ func (s *WalletServiceImpl) Delete(id int) (int, error) {
 }
 
 type DashboardView struct {
-	Chart   DashboardChart    `json:"chart"`
-	Savings DashboardSavings  `json:"savings"`
-	Planned DashboardPlanned  `json:"planned"`
-	Wallets []DashboardWallet `json:"detail"`
+	Chart       DashboardChart         `json:"chart"`
+	Allocations []DashboardAllocations `json:"allocations"`
+	Savings     DashboardSavings       `json:"savings"`
+	Planned     DashboardPlanned       `json:"planned"`
+	Wallets     []DashboardWallet      `json:"detail"`
 }
 
 type DashboardChart struct {
-	BalanceHistory   []DashboardBalance `json:"balance"`
-	LastYearExpenses map[string]int     `json:"last_year_expenses"`
-	YTDExpenses      map[string]int     `json:"ytd_expenses"`
+	BalanceHistory []DashboardBalance `json:"balance"`
+}
+
+type DashboardAllocations struct {
+	Name    string `json:"name"`
+	Expense int    `json:"expense"`
+	Alloc   int    `json:"alloc"`
 }
 
 type DashboardSavings struct {

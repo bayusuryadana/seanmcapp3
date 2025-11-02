@@ -1,14 +1,18 @@
-import Typography from '@mui/material/Typography';
-import { ReactNode } from 'react';
+import Typography, { TypographyProps } from '@mui/material/Typography';
 
-interface TitleProps {
-  children?: ReactNode;
-}
+interface TitleProps extends TypographyProps {}
 
-export const Title = (props: TitleProps) => {
+export const Title = ({ children, sx, ...props }: TitleProps) => {
   return (
-    <Typography component="h2" variant="h6" color="primary" gutterBottom sx={{display: 'inline'}}>
-      {props.children}
+    <Typography
+      component="h2"
+      variant="h6"
+      color="primary"
+      gutterBottom
+      sx={{ display: 'inline', ...sx }}
+      {...props}
+    >
+      {children}
     </Typography>
   );
-}
+};

@@ -3,6 +3,7 @@ package external
 import (
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/url"
 )
@@ -22,6 +23,7 @@ func (t *TelegramClientImpl) SendMessage(chatId int64, text string) (TelegramRes
 
 	resp, err := http.Get(reqURL)
 	if err != nil {
+		log.Println("Failed to send telegram message", err)
 		return TelegramResponse{}, err
 	}
 	defer resp.Body.Close()
@@ -29,6 +31,7 @@ func (t *TelegramClientImpl) SendMessage(chatId int64, text string) (TelegramRes
 	var telegramResp TelegramResponse
 	err = json.NewDecoder(resp.Body).Decode(&telegramResp)
 	if err != nil {
+		log.Println("Failed to decode telegram send message response", err)
 		return TelegramResponse{}, err
 	}
 	return telegramResp, nil

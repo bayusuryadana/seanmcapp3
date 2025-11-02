@@ -3,7 +3,7 @@ import axios from "axios";
 import { useContext, useState, FormEvent, useEffect } from "react";
 import { UserContext, UserContextType } from "../UserContext.tsx";
 import { WalletDetail } from "../utils/model.ts";
-import { modalStyle } from "../utils/constant.ts";
+import { API_URL, modalStyle } from "../utils/constant.ts";
 
 interface WalletModalProps {
   onClose: () => void
@@ -68,10 +68,9 @@ export const WalletModal = (props: WalletModalProps) => {
       'done': done
     }
 
-    axios.post('api/wallet/create', payload, {
-      auth: {
-        username: 'bayu',
-        password: userContext ?? ""
+    axios.post(API_URL + '/api/wallet/create', payload, {
+      headers: {
+        Authorization: 'Bearer ' + (userContext ?? "")
       }
     }).then((response) => {
       setAlert({display: 'none', text: ''})
@@ -98,10 +97,9 @@ export const WalletModal = (props: WalletModalProps) => {
       'done': done
     }
 
-    axios.post('api/wallet/update', payload, {
-      auth: {
-        username: 'bayu',
-        password: userContext ?? ""
+    axios.post(API_URL + '/api/wallet/update', payload, {
+      headers: {
+        Authorization: 'Bearer ' + (userContext ?? "")
       }
     }).then((_) => {
       setAlert({display: 'none', text: ''})
@@ -115,13 +113,12 @@ export const WalletModal = (props: WalletModalProps) => {
 
   const submitDelete = () => {
     const id = parseInt(props.walletDetail?.id.toString() ?? '-1')
-    axios.post('api/wallet/delete', {id: id}, {
-      auth: {
-        username: 'bayu',
-        password: userContext ?? ""
+    axios.get(API_URL + '/api/wallet/delete/' + id, {
+      headers: {
+        Authorization: 'Bearer ' + (userContext ?? "")
       }
     }).then((response) => {
-      if (response.data.data == '1') {
+      if (response.data.data == id) {
         props.onSuccess({id: id} as WalletDetail, actionText)
       } else {
         const errorMessage = 'something is wrong with the API'
