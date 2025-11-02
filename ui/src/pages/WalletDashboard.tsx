@@ -20,7 +20,7 @@ export const WalletDashboard = () => {
   const [walletStock, setWalletStock] = useState<WalletStock|null>(null)
   const [date, setDate] = useState('')
 
-  const onSuccess = (row: WalletDetail, actionText: String|undefined) => {
+  const onSuccess = (row: WalletDetail, actionText: string|undefined) => {
     setWalletDetail(null)
     if (data !== null) {
       if (actionText === 'Create') {
@@ -179,7 +179,7 @@ export const WalletDashboard = () => {
                 updateDashboard={getWalletDashboard}
                 createHandler={() => {setWalletDetail({ id: -1 } as WalletDetail)}}
                 editHandler={(walletDetail: WalletDetail) => {setWalletDetail(walletDetail)}} 
-                deleteHandler={(id: Number) => {setWalletDetail({ id: id } as WalletDetail)}}
+                deleteHandler={(id: number) => {setWalletDetail({ id: id } as WalletDetail)}}
               />
             </Paper>
           </Grid>

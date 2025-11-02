@@ -8,7 +8,7 @@ import { API_URL, modalStyle } from "../utils/constant.ts";
 interface WalletModalProps {
   onClose: () => void
   date: string
-  onSuccess: (row: WalletDetail, actionText: String|undefined) => void
+  onSuccess: (row: WalletDetail, actionText: string|undefined) => void
   walletDetail: WalletDetail|null
 }
 
@@ -101,7 +101,7 @@ export const WalletModal = (props: WalletModalProps) => {
       headers: {
         Authorization: 'Bearer ' + (userContext ?? "")
       }
-    }).then((_) => {
+    }).then(() => {
       setAlert({display: 'none', text: ''})
       props.onSuccess(payload, actionText)
     })

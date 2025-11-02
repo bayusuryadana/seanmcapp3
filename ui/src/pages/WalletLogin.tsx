@@ -8,7 +8,7 @@ import axios from "axios";
 import { Alert, Paper, Avatar, Button, ThemeProvider, Box, Toolbar, Typography, TextField } from "@mui/material";
 import { UserContext, UserContextType } from "../UserContext.tsx";
 
-export const WalletLogin = (_props: any) => {
+export const WalletLogin = () => {
   const  { userContext, saveToken } = useContext(UserContext) as UserContextType;
   const [alert, setAlert] = useState({display: 'none', text:''})
 

@@ -5,7 +5,7 @@ export const drawerWidth: number = 240;
 export const defaultTheme = createTheme();
 
 export const modalStyle = {
-    position: 'absolute' as 'absolute',
+    position: 'absolute' as const,
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
