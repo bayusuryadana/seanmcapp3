@@ -6,11 +6,11 @@ import (
 )
 
 type Stock struct {
-	Name         string  `db:"name"`
-	BestPrice    *string `db:"best_price"`
-	CurrentPrice *int64  `db:"current_price"`
-	FairPrice    *int64  `db:"fair_price"`
-	Status       bool    `db:"status"`
+	Name         string `db:"name"`
+	BestPrice    *int64 `db:"best_price"`
+	CurrentPrice *int64 `db:"current_price"`
+	FairPrice    *int64 `db:"fair_price"`
+	Status       bool   `db:"status"` // 0 -> wishlist, 1 -> bought
 }
 
 type StockRepo interface {
