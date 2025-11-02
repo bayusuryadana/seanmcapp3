@@ -79,6 +79,41 @@ func InitRouter(mainServices MainServices) {
 				resolve(c, res, err)
 			})
 		}
+
+		stock := api.Group("/stock")
+		{
+			stock.POST("/getAll", authMiddleware(), func(c *gin.Context) {
+				res, err := mainServices.StockService.GetAll()
+				resolve(c, res, err)
+			})
+
+			stock.POST("/create", authMiddleware(), func(c *gin.Context) {
+				var payload service.DashboardStock
+				if err := c.ShouldBindJSON(&payload); err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
+					return
+				}
+
+				res, err := mainServices.StockService.Create(payload)
+				resolve(c, res, err)
+			})
+
+			stock.POST("/update", authMiddleware(), func(c *gin.Context) {
+				var payload service.DashboardStock
+				if err := c.ShouldBindJSON(&payload); err != nil {
+					c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
+					return
+				}
+				res, err := mainServices.StockService.Update(payload)
+				resolve(c, res, err)
+			})
+
+			stock.GET("/delete/:id", authMiddleware(), func(c *gin.Context) {
+				name := c.Param("id")
+				res, err := mainServices.StockService.Delete(name)
+				resolve(c, res, err)
+			})
+		}
 	}
 
 	r.Run(":8080")

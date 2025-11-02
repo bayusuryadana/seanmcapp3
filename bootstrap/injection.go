@@ -17,6 +17,7 @@ type MainServices struct {
 	BirthdayService service.BirthdayService
 	WalletService   service.WalletService
 	NewsService     service.NewsService
+	StockService    service.StockService
 }
 
 func GetMainServices(settings util.AppsSettings) (MainServices, *sql.DB) {
@@ -33,6 +34,7 @@ func GetMainServices(settings util.AppsSettings) (MainServices, *sql.DB) {
 
 	peopleRepo := &repository.PeopleRepoImpl{DB: db}
 	walletRepo := &repository.WalletRepoImpl{DB: db}
+	stockRepo := &repository.StockRepoImpl{DB: db}
 
 	telegramClient := &external.TelegramClientImpl{Endpoint: settings.TelegramSettings.Endpoint, Botname: settings.TelegramSettings.Botname}
 
@@ -40,12 +42,14 @@ func GetMainServices(settings util.AppsSettings) (MainServices, *sql.DB) {
 	birthdayService := &service.BirthdayServiceImpl{PeopleRepo: peopleRepo, TelegramClient: telegramClient, ChatId: settings.TelegramSettings.PersonalChatID}
 	walletService := &service.WalletServiceImpl{WalletRepo: walletRepo}
 	newsService := &service.NewsServiceImpl{TelegramClient: telegramClient}
+	stockService := &service.StockServiceImpl{StockRepo: stockRepo}
 
 	return MainServices{
 		WarmupDBService: warmupDBService,
 		BirthdayService: birthdayService,
 		WalletService:   walletService,
 		NewsService:     newsService,
+		StockService:    stockService,
 	}, db
 
 }
