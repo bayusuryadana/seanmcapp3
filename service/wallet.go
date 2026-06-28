@@ -114,8 +114,8 @@ func calculateBalance(wallets []repository.Wallet, upToDate int) []DashboardBala
 		total += b.Sum
 		cumulative = append(cumulative, DashboardBalance{Date: b.Date, Sum: total})
 	}
-	if len(cumulative) > 3 {
-		cumulative = cumulative[len(cumulative)-3:]
+	if len(cumulative) > 6 {
+		cumulative = cumulative[len(cumulative)-6:]
 	}
 	sort.Slice(cumulative, func(i, j int) bool { return cumulative[i].Date > cumulative[j].Date })
 	return cumulative

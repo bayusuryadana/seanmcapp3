@@ -49,6 +49,8 @@ export type WalletStock = {
   current_price?: number;
   fair_price?: number;
   status: boolean;
+  buy_price?: number;
+  lot?: number;
 }
 
 export type WalletAlert = {

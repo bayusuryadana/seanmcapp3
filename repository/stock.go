@@ -7,10 +7,12 @@ import (
 
 type Stock struct {
 	Name         string `db:"name"`
-	BestPrice    *int64 `db:"best_price"`
+	BestPrice    int64  `db:"best_price"`
 	CurrentPrice *int64 `db:"current_price"`
-	FairPrice    *int64 `db:"fair_price"`
+	FairPrice    int64  `db:"fair_price"`
 	Status       bool   `db:"status"` // 0 -> wishlist, 1 -> bought
+	BuyPrice     *int64 `db:"buy_price"`
+	Lot          *int64 `db:"lot"`
 }
 
 type StockRepo interface {
@@ -34,7 +36,7 @@ func (r *StockRepoImpl) GetAll() ([]Stock, error) {
 	var stocks []Stock
 	for rows.Next() {
 		var s Stock
-		if err := rows.Scan(&s.Name, &s.BestPrice, &s.CurrentPrice, &s.FairPrice, &s.Status); err != nil {
+		if err := rows.Scan(&s.Name, &s.BestPrice, &s.CurrentPrice, &s.FairPrice, &s.Status, &s.BuyPrice, &s.Lot); err != nil {
 			return nil, err
 		}
 		stocks = append(stocks, s)
@@ -52,10 +54,10 @@ func boolToBit(b bool) string {
 func (r *StockRepoImpl) Create(stock Stock) (string, error) {
 	var name string
 	err := r.DB.QueryRow(`
-		INSERT INTO stocks (name, best_price, current_price, fair_price, status)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO stocks (name, best_price, current_price, fair_price, status, buy_price, lot)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING name`,
-		stock.Name, stock.BestPrice, stock.CurrentPrice, stock.FairPrice, boolToBit(stock.Status)).Scan(&name)
+		stock.Name, stock.BestPrice, stock.CurrentPrice, stock.FairPrice, boolToBit(stock.Status), stock.BuyPrice, stock.Lot).Scan(&name)
 	return name, err
 }
 
@@ -65,9 +67,9 @@ func (r *StockRepoImpl) Update(stock Stock) (string, error) {
 	}
 	var name string
 	err := r.DB.QueryRow(`
-		UPDATE stocks SET best_price=$1, current_price=$2, fair_price=$3, status=$4
-		WHERE name=$5 RETURNING name`,
-		stock.BestPrice, stock.CurrentPrice, stock.FairPrice, boolToBit(stock.Status), stock.Name).Scan(&name)
+		UPDATE stocks SET best_price=$1, current_price=$2, fair_price=$3, status=$4, buy_price=$5, lot=$6
+		WHERE name=$7 RETURNING name`,
+		stock.BestPrice, stock.CurrentPrice, stock.FairPrice, boolToBit(stock.Status), stock.BuyPrice, stock.Lot, stock.Name).Scan(&name)
 	if err == sql.ErrNoRows {
 		return "", nil
 	}

@@ -98,6 +98,11 @@ func InitRouter(mainServices MainServices) {
 				resolve(c, res, err)
 			})
 
+			stock.POST("/refresh", authMiddleware(), func(c *gin.Context) {
+				res, err := mainServices.StockService.RefreshPrices()
+				resolve(c, res, err)
+			})
+
 			stock.POST("/create", authMiddleware(), func(c *gin.Context) {
 				var payload service.DashboardStock
 				if err := c.ShouldBindJSON(&payload); err != nil {

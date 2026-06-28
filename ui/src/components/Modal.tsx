@@ -8,7 +8,7 @@ import { API_URL, modalStyle } from "../utils/constant.ts";
 interface WalletModalProps {
   onClose: () => void
   date: string
-  onSuccess: (row: WalletDetail, actionText: string|undefined) => void
+  onSuccess: () => void
   walletDetail: WalletDetail|null
 }
 
@@ -72,10 +72,9 @@ export const WalletModal = (props: WalletModalProps) => {
       headers: {
         Authorization: 'Bearer ' + (userContext ?? "")
       }
-    }).then((response) => {
+    }).then(() => {
       setAlert({display: 'none', text: ''})
-      const newData = {...payload, id: response.data.data.id}
-      props.onSuccess(newData, actionText)
+      props.onSuccess()
     })
     .catch((error) => {
       console.log(error)
@@ -103,7 +102,7 @@ export const WalletModal = (props: WalletModalProps) => {
       }
     }).then(() => {
       setAlert({display: 'none', text: ''})
-      props.onSuccess(payload, actionText)
+      props.onSuccess()
     })
     .catch((error) => {
       console.log(error)
@@ -119,7 +118,7 @@ export const WalletModal = (props: WalletModalProps) => {
       }
     }).then((response) => {
       if (response.data.data == id) {
-        props.onSuccess({id: id} as WalletDetail, actionText)
+        props.onSuccess()
       } else {
         const errorMessage = 'something is wrong with the API'
         console.log(errorMessage)

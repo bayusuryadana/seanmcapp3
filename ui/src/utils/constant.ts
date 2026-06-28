@@ -17,3 +17,7 @@ export const modalStyle = {
   };
 
 export const API_URL = import.meta.env.MODE === "development" ? "" : "https://seanmcapp.herokuapp.com"
+
+const stockPoolMoneyEnv = Number(import.meta.env.VITE_STOCK_POOL)
+export const STOCK_POOL_MONEY = Number.isFinite(stockPoolMoneyEnv) ? stockPoolMoneyEnv : 0
+

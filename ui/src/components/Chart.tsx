@@ -3,6 +3,7 @@ import { AreaChart, XAxis, YAxis, Label, ResponsiveContainer, Area, CartesianGri
 import { Title } from './Title.tsx';
 import { WalletChartBalance } from '../utils/model.ts';
 import { Fragment } from 'react';
+import { useMediaQuery } from '@mui/material';
 
 interface ChartProps {
   data: WalletChartBalance[]
@@ -11,13 +12,19 @@ interface ChartProps {
 export default function Chart(props: ChartProps) {
 
   const theme = useTheme();
+  const isXs = useMediaQuery(theme.breakpoints.only('xs'));
+  const maxPoints = isXs ? 3 : 6;
+  const chartData = [...props.data].sort((a, b) => a.date - b.date).slice(-maxPoints);
+  const maxSum = Math.max(0, ...chartData.map((item) => item.sum));
+  const roundedMax = Math.max(5000, Math.ceil(maxSum / 5000) * 5000);
+  const yTicks = Array.from({ length: roundedMax / 5000 + 1 }, (_, index) => index * 5000);
 
   return (
     <Fragment>
       <Title>Balance</Title>
       <ResponsiveContainer>
         <AreaChart
-          data={props.data.sort((a,b) => a.date-b.date)}
+          data={chartData}
           margin={{
             top: 16,
             right: 16,
@@ -34,6 +41,9 @@ export default function Chart(props: ChartProps) {
             dataKey="sum"
             stroke={theme.palette.text.secondary}
             style={theme.typography.body2}
+            domain={[0, roundedMax]}
+            ticks={yTicks}
+            tickFormatter={(value) => (value === 0 ? '0' : `${value / 1000}k`)}
           >
             <Label
               angle={270}
