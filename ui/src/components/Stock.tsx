@@ -51,7 +51,7 @@ export const Stock = (props: StockProps) => {
                 </Grid>
             </Grid>
             <TableContainer sx={{ overflowX: 'auto' }}>
-                <Table size="small">
+                <Table size="small" sx={{ '& td, & th': { px: 0.5, py: 0.5, fontSize: '0.75rem' } }}>
                     <TableHead>
                         <TableRow>
                             <TableCell>Name</TableCell>
@@ -85,11 +85,11 @@ export const Stock = (props: StockProps) => {
                                     </TableCell>
                                 )}
                                 <TableCell sx={{ whiteSpace: "nowrap" }}>
-                                    <IconButton aria-label="edit" color="primary" onClick={()=>props.editHandler(row)}>
-                                        <EditIcon />
+                                    <IconButton size="small" sx={{ p: 0.25 }} aria-label="edit" color="primary" onClick={()=>props.editHandler(row)}>
+                                        <EditIcon fontSize="small" />
                                     </IconButton>
-                                    <IconButton aria-label="delete" color="secondary" onClick={()=>props.deleteHandler(row.name)}>
-                                        <DeleteIcon />
+                                    <IconButton size="small" sx={{ p: 0.25 }} aria-label="delete" color="secondary" onClick={()=>props.deleteHandler(row.name)}>
+                                        <DeleteIcon fontSize="small" />
                                     </IconButton>
                                 </TableCell>
                             </TableRow>
