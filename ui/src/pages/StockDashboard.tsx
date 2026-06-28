@@ -50,16 +50,31 @@ export const StockDashboard = () => {
     }
   }
 
+  const portfolio = stocks.filter((s) => s.status)
+  const wishlist = stocks.filter((s) => !s.status)
+
   return (
     <>
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         <Alert id="invalid-data-alert" severity="error" sx={{ mb: 2, display: alert.display }}>{alert.text}</Alert>
         <Grid container spacing={3}>
-          <Grid item xs={12}>
+          <Grid item xs={12} md={6}>
             <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
               <Stock
-                rows={stocks}
-                createHandler={() => setWalletStock({ name: '' } as WalletStock)}
+                title="Portfolio"
+                rows={portfolio}
+                createHandler={() => setWalletStock({ name: '', status: true } as WalletStock)}
+                editHandler={(stock: WalletStock) => setWalletStock(stock)}
+                deleteHandler={(name: string) => setWalletStock({ name: name } as WalletStock)}
+              />
+            </Paper>
+          </Grid>
+          <Grid item xs={12} md={6}>
+            <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
+              <Stock
+                title="Wishlist"
+                rows={wishlist}
+                createHandler={() => setWalletStock({ name: '', status: false } as WalletStock)}
                 editHandler={(stock: WalletStock) => setWalletStock(stock)}
                 deleteHandler={(name: string) => setWalletStock({ name: name } as WalletStock)}
               />

@@ -40,7 +40,7 @@ func GetMainServices(settings util.AppsSettings) (MainServices, *sql.DB) {
 
 	warmupDBService := &service.WarmupDBServiceImpl{PeopleRepo: peopleRepo}
 	birthdayService := &service.BirthdayServiceImpl{PeopleRepo: peopleRepo, TelegramClient: telegramClient}
-	walletService := &service.WalletServiceImpl{WalletRepo: walletRepo}
+	walletService := &service.WalletServiceImpl{WalletRepo: walletRepo, StockRepo: stockRepo}
 	newsService := &service.NewsServiceImpl{TelegramClient: telegramClient}
 	stockService := &service.StockServiceImpl{StockRepo: stockRepo, TelegramClient: telegramClient}
 

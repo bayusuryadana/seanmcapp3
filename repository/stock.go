@@ -42,13 +42,20 @@ func (r *StockRepoImpl) GetAll() ([]Stock, error) {
 	return stocks, nil
 }
 
+func boolToBit(b bool) string {
+	if b {
+		return "1"
+	}
+	return "0"
+}
+
 func (r *StockRepoImpl) Create(stock Stock) (string, error) {
 	var name string
 	err := r.DB.QueryRow(`
 		INSERT INTO stocks (name, best_price, current_price, fair_price, status)
 		VALUES ($1, $2, $3, $4, $5)
 		RETURNING name`,
-		stock.Name, stock.BestPrice, stock.CurrentPrice, stock.FairPrice, stock.Status).Scan(&name)
+		stock.Name, stock.BestPrice, stock.CurrentPrice, stock.FairPrice, boolToBit(stock.Status)).Scan(&name)
 	return name, err
 }
 
@@ -60,7 +67,7 @@ func (r *StockRepoImpl) Update(stock Stock) (string, error) {
 	err := r.DB.QueryRow(`
 		UPDATE stocks SET best_price=$1, current_price=$2, fair_price=$3, status=$4
 		WHERE name=$5 RETURNING name`,
-		stock.BestPrice, stock.CurrentPrice, stock.FairPrice, stock.Status, stock.Name).Scan(&name)
+		stock.BestPrice, stock.CurrentPrice, stock.FairPrice, boolToBit(stock.Status), stock.Name).Scan(&name)
 	if err == sql.ErrNoRows {
 		return "", nil
 	}

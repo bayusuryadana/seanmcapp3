@@ -7,6 +7,7 @@ import DeleteIcon from "@mui/icons-material/Delete";
 import {WalletStock} from "../utils/model.ts";
 
 interface StockProps {
+    title: string
     rows: WalletStock[]
     editHandler: (row: WalletStock) => void
     deleteHandler: (name: string) => void
@@ -18,7 +19,7 @@ export const Stock = (props: StockProps) => {
         <Fragment>
             <Grid container justifyContent={'space-between'}>
                 <Grid item>
-                    <Title>Stock list</Title>
+                    <Title>{props.title}</Title>
                 </Grid>
                 <Grid item>
                     <IconButton color='primary' size='small' onClick={props.createHandler}>

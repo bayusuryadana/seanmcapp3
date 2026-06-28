@@ -1,9 +1,12 @@
-import { Button, Modal, Box, Typography, Alert, TextField, Grid, InputLabel, FormControlLabel, Checkbox } from "@mui/material";
+import { Button, Modal, Box, Typography, Alert, TextField, Grid, InputLabel, FormControlLabel, Switch } from "@mui/material";
 import axios from "axios";
 import { useContext, useState, FormEvent, useEffect } from "react";
 import { UserContext, UserContextType } from "../UserContext.tsx";
 import { WalletStock } from "../utils/model.ts";
 import { API_URL, modalStyle } from "../utils/constant.ts";
+
+// Stock name must be exactly 4 capital letters (e.g. BBCA)
+const STOCK_NAME_REGEX = /^[A-Z]{4}$/
 
 interface Props {
     onClose: () => void
@@ -46,8 +49,13 @@ export const WalletStockModal = (props: Props) => {
     }
 
     const submitCreate = (formData: FormData) => {
+        const name = formData.get('name')?.toString() ?? ""
+        if (!STOCK_NAME_REGEX.test(name)) {
+            setAlert({display: 'true', text: 'Name must be exactly 4 capital letters!'})
+            return
+        }
         const payload = {
-            name: formData.get('name')?.toString() ?? "",
+            name: name,
             best_price: parseInt(formData.get('best_price')?.toString() ?? "0"),
             fair_price: parseInt(formData.get('fair_price')?.toString() ?? "0"),
             status: formData.get('status')?.toString() ? true : false,
@@ -112,7 +120,9 @@ export const WalletStockModal = (props: Props) => {
                             required fullWidth name="name" type="text" variant="standard"
                             value={data?.name ?? ''}
                             disabled={actionText === 'Edit'}
-                            onChange={(event) => setData({...data, name: event.target.value} as WalletStock)}
+                            helperText="4 capital letters (e.g. BBCA)"
+                            inputProps={{ pattern: '[A-Z]{4}', maxLength: 4, style: { textTransform: 'uppercase' } }}
+                            onChange={(event) => setData({...data, name: event.target.value.toUpperCase()} as WalletStock)}
                         />
                     </Grid>
                     <Grid item xs={6}>
@@ -134,7 +144,7 @@ export const WalletStockModal = (props: Props) => {
                     <Grid item xs={12}>
                         <FormControlLabel
                             control={
-                                <Checkbox
+                                <Switch
                                     color="secondary"
                                     name="status"
                                     value={data?.status ? 'yes' : ''}
