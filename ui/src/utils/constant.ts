@@ -5,7 +5,7 @@ export const drawerWidth: number = 240;
 export const defaultTheme = createTheme();
 
 export const modalStyle = {
-    position: 'absolute' as 'absolute',
+    position: 'absolute' as const,
     top: '50%',
     left: '50%',
     transform: 'translate(-50%, -50%)',
@@ -16,4 +16,8 @@ export const modalStyle = {
     p: 4,
   };
 
-export const API_URL = import.meta.env.MODE === "development" ? "http://localhost:8080" : "https://seanmcapp.herokuapp.com"
+export const API_URL = import.meta.env.MODE === "development" ? "" : "https://seanmcapp.herokuapp.com"
+
+const stockPoolMoneyEnv = Number(import.meta.env.VITE_STOCK_POOL)
+export const STOCK_POOL_MONEY = Number.isFinite(stockPoolMoneyEnv) ? stockPoolMoneyEnv : 0
+

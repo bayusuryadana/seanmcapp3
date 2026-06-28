@@ -5,6 +5,7 @@ import (
 	"log"
 	"seanmcapp/external"
 	"seanmcapp/repository"
+	"seanmcapp/util"
 	"strconv"
 	"time"
 )
@@ -16,7 +17,6 @@ type BirthdayService interface {
 type BirthdayServiceImpl struct {
 	PeopleRepo     repository.PeopleRepo
 	TelegramClient external.TelegramClient
-	ChatId         int64
 }
 
 func (b *BirthdayServiceImpl) Run() {
@@ -59,7 +59,8 @@ func (b *BirthdayServiceImpl) sendBirthdayReminder(p repository.People, numOfDay
 	}
 
 	msg := fmt.Sprintf("%s is %s's birthday!!", dayWord, p.Name)
-	resp, err := b.TelegramClient.SendMessage(b.ChatId, msg)
+	personalChatId := util.GetAppSettings().TelegramSettings.PersonalChatID
+	resp, err := b.TelegramClient.SendMessage(personalChatId, msg)
 	if err != nil {
 		log.Println("Failed to send message:", err)
 		return

@@ -20,7 +20,8 @@ Port application from [seanmcapp](https://github.com/bayusuryadana/seanmcapp)
 ## Setup
 1. Install Go
 2. Install Node + Yarn
-3. run `cd ui` -> `yarn build` -> `cd ..` -> `go run .`
+3. run backend `go run .`
+4. run frontend `yarn dev-local`
 
 ## Contact
 feel free to contact me at bayusuryadana@gmail.com  

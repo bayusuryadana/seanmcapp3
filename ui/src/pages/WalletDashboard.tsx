@@ -2,7 +2,7 @@ import { Container, Alert, Grid, Paper, Typography, LinearProgress } from "@mui/
 import Chart from "../components/Chart.tsx"
 import { Detail } from "../components/Detail.tsx"
 import { Title } from "../components/Title.tsx"
-import { WalletPlanned, WalletDetail, WalletDashboardData, WalletAlert } from "../utils/model.ts"
+import {WalletPlanned, WalletDetail, WalletDashboardData, WalletAlert} from "../utils/model.ts"
 import { WalletModal } from "../components/Modal.tsx"
 import axios from "axios"
 import { useContext, useEffect, useState } from "react"
@@ -17,24 +17,10 @@ export const WalletDashboard = () => {
   const [walletDetail, setWalletDetail] = useState<WalletDetail|null>(null)
   const [date, setDate] = useState('')
 
-  const onSuccess = (row: WalletDetail, actionText: String|undefined) => {
+  const onSuccess = () => {
     setWalletDetail(null)
-    if (data !== null) {
-      if (actionText === 'Create') {
-        const updatedDetail = {...data, detail: [...data.detail, row]}
-        setData(updatedDetail)
-      } else if (actionText === 'Edit') {
-        const index = data?.detail.findIndex((d) => d.id === row.id) ?? -1
-        if (index && index > -1 && data) {
-          const updatedDetail = {...data, detail: [...data.detail.filter((_, i) => i !== index), row]}
-          setData(updatedDetail)
-        }
-      } else if (actionText === 'Delete') {
-        const index = data?.detail.findIndex((d) => d.id === row.id) ?? -1
-        if (index && index > -1 && data) {
-          setData({...data, detail: data.detail.filter((_, i) => i !== index)})
-        }
-      }
+    if (date !== '') {
+      getWalletDashboard(date)
     }
   }
 
@@ -114,7 +100,6 @@ export const WalletDashboard = () => {
               <Grid container spacing={2}>
                 {data?.allocations.map((item) => {
                   const percent = item.alloc > 0 ? (item.expense / item.alloc) * 100 : 100;
-                  console.log(item.name + ": " + percent)
                   return (
                     <Grid item xs={6} md={6} key={item.name}>
                       <Grid container alignItems="baseline" spacing={1} sx={{ mb: 1 }}>
@@ -164,7 +149,7 @@ export const WalletDashboard = () => {
                 updateDashboard={getWalletDashboard}
                 createHandler={() => {setWalletDetail({ id: -1 } as WalletDetail)}}
                 editHandler={(walletDetail: WalletDetail) => {setWalletDetail(walletDetail)}} 
-                deleteHandler={(id: Number) => {setWalletDetail({ id: id } as WalletDetail)}} 
+                deleteHandler={(id: number) => {setWalletDetail({ id: id } as WalletDetail)}}
               />
             </Paper>
           </Grid>
@@ -172,11 +157,11 @@ export const WalletDashboard = () => {
       </Container>
       
       <WalletModal 
-          onClose={() => setWalletDetail(null)}
-          date={date}
-          onSuccess={onSuccess}
-          walletDetail={walletDetail}
-          />
+        onClose={() => setWalletDetail(null)}
+        date={date}
+        onSuccess={onSuccess}
+        walletDetail={walletDetail}
+      />
     </>
   )
 }
