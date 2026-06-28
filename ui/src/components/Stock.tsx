@@ -1,6 +1,7 @@
 import {Fragment} from "react";
 import {Grid, IconButton, Table, TableBody, TableCell, TableContainer, TableHead, TableRow} from "@mui/material";
 import {Title} from "./Title.tsx";
+import AddIcon from "@mui/icons-material/Add";
 import EditIcon from "@mui/icons-material/Edit";
 import DeleteIcon from "@mui/icons-material/Delete";
 import {WalletStock} from "../utils/model.ts";
@@ -10,7 +11,6 @@ interface StockProps {
     editHandler: (row: WalletStock) => void
     deleteHandler: (name: string) => void
     createHandler: () => void
-    updateDashboard: (date: string) => void
 }
 
 export const Stock = (props: StockProps) => {
@@ -19,6 +19,11 @@ export const Stock = (props: StockProps) => {
             <Grid container justifyContent={'space-between'}>
                 <Grid item>
                     <Title>Stock list</Title>
+                </Grid>
+                <Grid item>
+                    <IconButton color='primary' size='small' onClick={props.createHandler}>
+                        <AddIcon />
+                    </IconButton>
                 </Grid>
             </Grid>
             <TableContainer sx={{ overflowX: 'auto' }}>

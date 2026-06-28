@@ -2,14 +2,12 @@ import { Container, Alert, Grid, Paper, Typography, LinearProgress } from "@mui/
 import Chart from "../components/Chart.tsx"
 import { Detail } from "../components/Detail.tsx"
 import { Title } from "../components/Title.tsx"
-import {WalletPlanned, WalletDetail, WalletDashboardData, WalletAlert, WalletStock} from "../utils/model.ts"
+import {WalletPlanned, WalletDetail, WalletDashboardData, WalletAlert} from "../utils/model.ts"
 import { WalletModal } from "../components/Modal.tsx"
 import axios from "axios"
 import { useContext, useEffect, useState } from "react"
 import { UserContext, UserContextType } from "../UserContext.tsx"
 import { API_URL } from "../utils/constant.ts"
-import {Stock} from "../components/Stock.tsx";
-import {WalletStockModal} from "../components/WalletStockModal.tsx";
 
 export const WalletDashboard = () => {
 
@@ -17,7 +15,6 @@ export const WalletDashboard = () => {
   const [alert, setAlert] = useState<WalletAlert>({display: 'none', text: ''})
   const [data, setData] = useState<WalletDashboardData|null>(null);
   const [walletDetail, setWalletDetail] = useState<WalletDetail|null>(null)
-  const [walletStock, setWalletStock] = useState<WalletStock|null>(null)
   const [date, setDate] = useState('')
 
   const onSuccess = (row: WalletDetail, actionText: string|undefined) => {
@@ -83,18 +80,6 @@ export const WalletDashboard = () => {
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
         <Alert id="invalid-data-alert" severity="error" sx={{ mb: 2, display: alert.display}}>{alert.text}</Alert>
         <Grid container spacing={3}>
-          {/* Stock list */}
-          <Grid item xs={12} md={4}>
-            <Paper sx={{p: 2, display: 'flex', flexDirection: 'column', height: 200, alignItems: 'center', }}>
-              <Stock
-                  rows={data?.stocks ?? []}
-                  updateDashboard={getWalletDashboard}
-                  createHandler={() => {setWalletStock(null)}}
-                  editHandler={(stock: WalletStock) => {setWalletStock(stock)}}
-                  deleteHandler={(name: string) => {setWalletStock({ name: name } as WalletStock)}}
-              />
-            </Paper>
-          </Grid>
           {/* Saving accounts */}
           <Grid item xs={12} md={4}>
             <Paper sx={{p: 2, display: 'flex', flexDirection: 'column', height: 200, alignItems: 'center', }}>
@@ -114,7 +99,7 @@ export const WalletDashboard = () => {
             </Paper>
           </Grid>
           {/* Balance */}
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={8}>
             <Paper sx={{p: 2, display: 'flex', flexDirection: 'column', height: 200, }}>
                 { data?.chart?.balance ? <Chart data={data?.chart.balance} /> : <Typography variant="body2">Loading...</Typography> }
             </Paper>
@@ -191,15 +176,6 @@ export const WalletDashboard = () => {
         date={date}
         onSuccess={onSuccess}
         walletDetail={walletDetail}
-      />
-
-      <WalletStockModal
-          onClose={() => setWalletDetail(null)}
-          onSuccess={(row: WalletStock, actionText: string|undefined) => {
-            console.log(row)
-            console.log(actionText)
-          }}
-          walletStock={walletStock}
       />
     </>
   )

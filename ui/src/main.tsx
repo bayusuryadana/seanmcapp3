@@ -7,6 +7,7 @@ import { WalletLogin } from './pages/WalletLogin'
 import { UserProvider } from './UserContext'
 import { StrictMode } from 'react'
 import { WalletDashboard } from './pages/WalletDashboard'
+import { StockDashboard } from './pages/StockDashboard'
 
 const router = createBrowserRouter([
   {
@@ -23,6 +24,10 @@ const router = createBrowserRouter([
       {
         path: "/wallet",
         element: <WalletDashboard />
+      },
+      {
+        path: "/wallet/stock",
+        element: <StockDashboard />
       },
     ]
   },
