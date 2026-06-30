@@ -3,15 +3,10 @@ package service
 import (
 	"errors"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"seanmcapp/external"
 	"seanmcapp/repository"
-	"seanmcapp/util"
 	"strings"
-
-	"github.com/tidwall/gjson"
 )
 
 type StockService interface {
@@ -26,12 +21,11 @@ type StockService interface {
 
 type StockServiceImpl struct {
 	StockRepo      repository.StockRepo
+	StockClient    external.StockClient
 	TelegramClient external.TelegramClient
+	PersonalChatID int64
+	guard          runGuard
 }
-
-var urlTemplate = "https://query1.finance.yahoo.com/v8/finance/chart/{{name}}.jk"
-
-const browserUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 func (s *StockServiceImpl) Run() {
 	stocks, err := s.GetAll()
@@ -67,8 +61,7 @@ func (s *StockServiceImpl) Run() {
 	if len(result) > 0 {
 		log.Println("[INFO] stocks hit/reach")
 		finalResult := strings.Join(result, "\n")
-		personalChatId := util.GetAppSettings().TelegramSettings.PersonalChatID
-		_, err := s.TelegramClient.SendMessage(personalChatId, finalResult)
+		_, err := s.TelegramClient.SendMessage(s.PersonalChatID, finalResult)
 		if err != nil {
 			log.Printf("[ERROR] cannot send message for the final result: %v\n", err)
 		}
@@ -76,35 +69,14 @@ func (s *StockServiceImpl) Run() {
 }
 
 func (s *StockServiceImpl) fetchAndUpdatePrices(stocks []DashboardStock) {
-	for _, stock := range stocks {
-		stockUrl := strings.NewReplacer(
-			"{{name}}", stock.Name,
-		).Replace(urlTemplate)
+	s.guard.run("stock refresh", func() {
+		for _, stock := range stocks {
+			currentPrice, err := s.StockClient.GetPrice(stock.Name)
+			if err != nil {
+				log.Printf("[ERROR] %v\n", err)
+				continue
+			}
 
-		req, err := http.NewRequest(http.MethodGet, stockUrl, nil)
-		if err != nil {
-			log.Printf("[ERROR] cannot build request: %v\n", err)
-			continue
-		}
-		req.Header.Set("User-Agent", browserUserAgent)
-
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			log.Printf("[ERROR] cannot fetch stock data: %v\n", err)
-			continue
-		}
-
-		body, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		if err != nil {
-			log.Printf("[ERROR] reading response: %v\n", err)
-			continue
-		}
-
-		jsonStr := string(body)
-		regularMarketPrice := gjson.Get(jsonStr, "chart.result.0.meta.regularMarketPrice")
-		if regularMarketPrice.Exists() {
-			currentPrice := regularMarketPrice.Int()
 			updatedStock := repository.Stock{
 				Name:         stock.Name,
 				BestPrice:    stock.BestPrice,
@@ -114,15 +86,12 @@ func (s *StockServiceImpl) fetchAndUpdatePrices(stocks []DashboardStock) {
 				BuyPrice:     stock.BuyPrice,
 				Lot:          stock.Lot,
 			}
-			_, err := s.StockRepo.Update(updatedStock)
-			if err != nil {
+			if _, err := s.StockRepo.Update(updatedStock); err != nil {
 				log.Printf("[ERROR] cannot update stock: %v\n", err)
 				continue
 			}
-		} else {
-			log.Printf("[ERROR] stock %s not found in json\n", stock.Name)
 		}
-	}
+	})
 }
 
 func (s *StockServiceImpl) RefreshPrices() ([]DashboardStock, error) {
@@ -139,31 +108,47 @@ func (s *StockServiceImpl) RefreshPrices() ([]DashboardStock, error) {
 
 func (s *StockServiceImpl) GetAll() ([]DashboardStock, error) {
 	stocks, err := s.StockRepo.GetAll()
+	if err != nil {
+		log.Printf("[ERROR] cannot retrieve stocks: %v\n", err)
+		return nil, err
+	}
 	var dashboardStocks []DashboardStock
 	for _, st := range stocks {
 		dashboardStocks = append(dashboardStocks, DashboardStock(st))
 	}
-	return dashboardStocks, err
+	return dashboardStocks, nil
 }
 
 func (s *StockServiceImpl) Create(stock DashboardStock) (string, error) {
 	if stock.BestPrice <= 0 || stock.FairPrice <= 0 {
-		return "", errors.New("best_price and fair_price are required and must be > 0")
+		return "", ValidationError{Message: "best_price and fair_price are required and must be > 0"}
 	}
 	st := repository.Stock(stock)
-	return s.StockRepo.Create(st)
+	name, err := s.StockRepo.Create(st)
+	if err != nil {
+		log.Printf("[ERROR] cannot create stock: %v\n", err)
+	}
+	return name, err
 }
 
 func (s *StockServiceImpl) Update(stock DashboardStock) (string, error) {
 	if stock.BestPrice <= 0 || stock.FairPrice <= 0 {
-		return "", errors.New("best_price and fair_price are required and must be > 0")
+		return "", ValidationError{Message: "best_price and fair_price are required and must be > 0"}
 	}
 	st := repository.Stock(stock)
-	return s.StockRepo.Update(st)
+	name, err := s.StockRepo.Update(st)
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
+		log.Printf("[ERROR] cannot update stock: %v\n", err)
+	}
+	return name, err
 }
 
 func (s *StockServiceImpl) Delete(name string) (string, error) {
-	return s.StockRepo.Delete(name)
+	deletedName, err := s.StockRepo.Delete(name)
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
+		log.Printf("[ERROR] cannot delete stock: %v\n", err)
+	}
+	return deletedName, err
 }
 
 type DashboardStock struct {

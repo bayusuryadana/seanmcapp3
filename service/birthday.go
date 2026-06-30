@@ -5,7 +5,6 @@ import (
 	"log"
 	"seanmcapp/external"
 	"seanmcapp/repository"
-	"seanmcapp/util"
 	"strconv"
 	"time"
 )
@@ -17,18 +16,22 @@ type BirthdayService interface {
 type BirthdayServiceImpl struct {
 	PeopleRepo     repository.PeopleRepo
 	TelegramClient external.TelegramClient
+	PersonalChatID int64
+	guard          runGuard
 }
 
 func (b *BirthdayServiceImpl) Run() {
-	now := time.Now()
-	tmr := now.Add(24 * time.Hour)
-	nextWeek := now.Add(7 * 24 * time.Hour)
+	b.guard.run("birthday run", func() {
+		now := time.Now()
+		tmr := now.Add(24 * time.Hour)
+		nextWeek := now.Add(7 * 24 * time.Hour)
 
-	today := b.sendForDay(now.Day(), int(now.Month()), 0)
-	tomorrow := b.sendForDay(tmr.Day(), int(tmr.Month()), 1)
-	nextWeekPpl := b.sendForDay(nextWeek.Day(), int(nextWeek.Month()), 7)
+		today := b.sendForDay(now.Day(), int(now.Month()), 0)
+		tomorrow := b.sendForDay(tmr.Day(), int(tmr.Month()), 1)
+		nextWeekPpl := b.sendForDay(nextWeek.Day(), int(nextWeek.Month()), 7)
 
-	fmt.Println(strconv.Itoa(today+tomorrow+nextWeekPpl) + " people has birthday today")
+		log.Println("[INFO] " + strconv.Itoa(today+tomorrow+nextWeekPpl) + " people has birthday today")
+	})
 }
 
 func (b *BirthdayServiceImpl) sendForDay(day, month, numOfDays int) int {
@@ -59,8 +62,7 @@ func (b *BirthdayServiceImpl) sendBirthdayReminder(p repository.People, numOfDay
 	}
 
 	msg := fmt.Sprintf("%s is %s's birthday!!", dayWord, p.Name)
-	personalChatId := util.GetAppSettings().TelegramSettings.PersonalChatID
-	resp, err := b.TelegramClient.SendMessage(personalChatId, msg)
+	resp, err := b.TelegramClient.SendMessage(b.PersonalChatID, msg)
 	if err != nil {
 		log.Println("Failed to send message:", err)
 		return

@@ -1,23 +1,25 @@
 package bootstrap
 
 import (
-	"fmt"
 	"log"
 	"time"
 
 	"github.com/robfig/cron/v3"
 )
 
-func InitScheduler(mainServices MainServices) {
+func InitScheduler(mainServices MainServices) *cron.Cron {
 	loc, _ := time.LoadLocation("Asia/Jakarta")
-	c := cron.New(cron.WithSeconds(), cron.WithLocation(loc))
+	c := cron.New(
+		cron.WithSeconds(),
+		cron.WithLocation(loc),
+		cron.WithChain(cron.Recover(cron.DefaultLogger)),
+	)
 
 	schedulers := []*Scheduler{
-		{Task: mainServices.WarmupDBService, CronExpr: "0 * * * * *", Repeat: false},
-		{Task: mainServices.WarmupDBService, CronExpr: "*/5 * * * * *", Repeat: false},
 		{Task: mainServices.BirthdayService, CronExpr: "0 0 8 * * *", Repeat: true},
 		{Task: mainServices.NewsService, CronExpr: "0 0 9 * * *", Repeat: true},
 		{Task: mainServices.StockService, CronExpr: "0 0 19 * * *", Repeat: true},
+		{Task: mainServices.InstagramService, CronExpr: "0 0 10 * * *", Repeat: true},
 	}
 
 	for _, s := range schedulers {
@@ -27,8 +29,9 @@ func InitScheduler(mainServices MainServices) {
 		}
 	}
 
-	fmt.Println("Running scheduled jobs...")
+	log.Println("Running scheduled jobs...")
 	c.Start()
+	return c
 }
 
 type ScheduledTask interface {

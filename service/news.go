@@ -7,8 +7,8 @@ import (
 	"log"
 	"net/http"
 	"seanmcapp/external"
-	"seanmcapp/util"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -19,64 +19,77 @@ type NewsService interface {
 
 type NewsServiceImpl struct {
 	TelegramClient external.TelegramClient
+	GroupChatID    int64
+	httpClient     *http.Client
+	sources        []NewsObject
+	guard          runGuard
+}
+
+func NewNewsService(telegramClient external.TelegramClient, groupChatID int64) *NewsServiceImpl {
+	return &NewsServiceImpl{
+		TelegramClient: telegramClient,
+		GroupChatID:    groupChatID,
+		httpClient:     &http.Client{Timeout: 15 * time.Second},
+		sources: []NewsObject{
+			Detik{},
+			Tirtol{},
+			Kumparan{},
+			CNA{},
+			Mothership{},
+			Reuters{},
+		},
+	}
 }
 
 func (s *NewsServiceImpl) Run() {
-	newsList := []NewsObject{
-		Detik{},
-		Tirtol{},
-		Kumparan{},
-		CNA{},
-		Mothership{},
-		Reuters{},
+	s.guard.run("news run", func() {
+		var results []NewsResult
+
+		for _, news := range s.sources {
+			result, err := s.fetchNews(news)
+			if err != nil {
+				log.Printf("[ERROR] %s: %v\n", news.Name(), err)
+				continue
+			}
+			results = append(results, result)
+		}
+
+		message := "Awali harimu dengan berita 📰 dari **Seanmctoday** by @seanmcbot\n\n"
+		for _, res := range results {
+			flags := ""
+			for _, f := range res.NewsSource.Flag() {
+				flags += string(rune(f))
+			}
+			message += fmt.Sprintf("%s %s - [%s](%s)\n\n", flags, res.NewsSource.Name(), strings.TrimSpace(res.Title), res.URL)
+		}
+
+		s.TelegramClient.SendMessage(s.GroupChatID, message)
+	})
+}
+
+func (s *NewsServiceImpl) fetchNews(news NewsObject) (NewsResult, error) {
+	resp, err := s.httpClient.Get(news.URL())
+	if err != nil {
+		return NewsResult{}, fmt.Errorf("fetching: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return NewsResult{}, fmt.Errorf("reading response: %w", err)
 	}
 
-	var results []NewsResult
-
-	for _, news := range newsList {
-		resp, err := http.Get(news.URL())
-		if err != nil {
-			log.Printf("[ERROR] fetching %s: %v\n", news.Name(), err)
-			continue
-		}
-		defer resp.Body.Close()
-
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Printf("[ERROR] reading response: %v\n", err)
-			continue
-		}
-
-		doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(body)))
-		if err != nil {
-			log.Printf("[ERROR] parsing document: %v\n", err)
-			continue
-		}
-
-		title, url, err := news.Parse(doc)
-		if err != nil {
-			log.Printf("[ERROR] parsing news from %s: %v\n", news.Name(), err)
-			continue
-		}
-
-		results = append(results, NewsResult{
-			Title:      title,
-			URL:        url,
-			NewsSource: news,
-		})
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(body)))
+	if err != nil {
+		return NewsResult{}, fmt.Errorf("parsing document: %w", err)
 	}
 
-	message := "Awali harimu dengan berita 📰 dari **Seanmctoday** by @seanmcbot\n\n"
-	for _, res := range results {
-		flags := ""
-		for _, f := range res.NewsSource.Flag() {
-			flags += string(rune(f))
-		}
-		message += fmt.Sprintf("%s %s - [%s](%s)\n\n", flags, res.NewsSource.Name(), strings.TrimSpace(res.Title), res.URL)
+	title, url, err := news.Parse(doc)
+	if err != nil {
+		return NewsResult{}, fmt.Errorf("parsing news: %w", err)
 	}
 
-	groupChatId := util.GetAppSettings().TelegramSettings.GroupChatID
-	s.TelegramClient.SendMessage(groupChatId, message)
+	return NewsResult{Title: title, URL: url, NewsSource: news}, nil
 }
 
 type NewsObject interface {

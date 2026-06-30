@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"log"
 	"seanmcapp/repository"
 	"sort"
@@ -15,13 +16,17 @@ type WalletService interface {
 
 type WalletServiceImpl struct {
 	WalletRepo repository.WalletRepo
-	StockRepo  repository.StockRepo
 }
 
-var expenseSet = map[string]struct{}{
-	"Daily": {}, "Rent": {}, "Travel": {}, "Fashion": {},
-	"IT Stuff": {}, "Misc": {}, "Wellness": {}, "Funding": {},
-}
+var expenseCategories = []string{"Daily", "Rent", "Travel", "Fashion", "IT Stuff", "Misc", "Wellness", "Funding"}
+
+var expenseSet = func() map[string]struct{} {
+	set := make(map[string]struct{}, len(expenseCategories))
+	for _, c := range expenseCategories {
+		set[c] = struct{}{}
+	}
+	return set
+}()
 
 func (s *WalletServiceImpl) Dashboard(date int) (*DashboardView, error) {
 	wallets, err := s.WalletRepo.GetAll()
@@ -55,9 +60,8 @@ func (s *WalletServiceImpl) Dashboard(date int) (*DashboardView, error) {
 	}
 
 	// fixed order
-	categories := []string{"Daily", "Rent", "Travel", "Fashion", "IT Stuff", "Misc", "Wellness", "Funding"}
 	var alloc []DashboardAllocations
-	for _, cat := range categories {
+	for _, cat := range expenseCategories {
 		alloc = append(alloc, DashboardAllocations{
 			Name:    cat,
 			Expense: ytdExpenses[cat],
@@ -77,12 +81,6 @@ func (s *WalletServiceImpl) Dashboard(date int) (*DashboardView, error) {
 		}
 	}
 
-	var dashboardStocks []DashboardStock
-	stocks, err := s.StockRepo.GetAll()
-	for _, stock := range stocks {
-		dashboardStocks = append(dashboardStocks, DashboardStock(stock))
-	}
-
 	return &DashboardView{
 		Chart: DashboardChart{
 			BalanceHistory: dashboardBalance,
@@ -91,7 +89,6 @@ func (s *WalletServiceImpl) Dashboard(date int) (*DashboardView, error) {
 		Savings:     DashboardSavings{DBS: currentDBS, BCA: currentBCA},
 		Planned:     DashboardPlanned{SGD: plannedSGD, IDR: plannedIDR},
 		Wallets:     dashboardWallets,
-		Stocks:      dashboardStocks,
 	}, nil
 }
 
@@ -139,16 +136,28 @@ func calculateTotalAmount(wallets []repository.Wallet, account string, date *int
 
 func (s *WalletServiceImpl) Create(wallet DashboardWallet) (int, error) {
 	w := repository.Wallet(wallet)
-	return s.WalletRepo.Insert(w)
+	id, err := s.WalletRepo.Insert(w)
+	if err != nil {
+		log.Println("Failed to create wallet", err)
+	}
+	return id, err
 }
 
 func (s *WalletServiceImpl) Update(wallet DashboardWallet) (int, error) {
 	w := repository.Wallet(wallet)
-	return s.WalletRepo.Update(w)
+	id, err := s.WalletRepo.Update(w)
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
+		log.Println("Failed to update wallet", err)
+	}
+	return id, err
 }
 
 func (s *WalletServiceImpl) Delete(id int) (int, error) {
-	return s.WalletRepo.Delete(id)
+	deletedID, err := s.WalletRepo.Delete(id)
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
+		log.Println("Failed to delete wallet", err)
+	}
+	return deletedID, err
 }
 
 type DashboardView struct {
@@ -157,7 +166,6 @@ type DashboardView struct {
 	Savings     DashboardSavings       `json:"savings"`
 	Planned     DashboardPlanned       `json:"planned"`
 	Wallets     []DashboardWallet      `json:"detail"`
-	Stocks      []DashboardStock       `json:"stocks"`
 }
 
 type DashboardChart struct {

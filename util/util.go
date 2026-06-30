@@ -16,6 +16,12 @@ type AppsSettings struct {
 	DBSettings       DatabaseSettings
 	WalletSettings   WalletSettings
 	TelegramSettings TelegramSettings
+	IGSettings       IGSettings
+}
+
+type IGSettings struct {
+	SessionID string
+	CSRFToken string
 }
 
 type DatabaseSettings struct {
@@ -102,6 +108,16 @@ func getAppSettings() AppsSettings {
 		log.Fatal("TELEGRAM_PERSONAL_CHAT_ID is not set")
 	}
 
+	igSessionID := os.Getenv("IG_SESSION_ID")
+	if igSessionID == "" {
+		log.Fatal("IG_SESSION_ID is not set")
+	}
+
+	igCSRFToken := os.Getenv("IG_CSRF_TOKEN")
+	if igCSRFToken == "" {
+		log.Fatal("IG_CSRF_TOKEN is not set")
+	}
+
 	return AppsSettings{
 		DBSettings: DatabaseSettings{
 			Host: dbHost,
@@ -119,8 +135,14 @@ func getAppSettings() AppsSettings {
 			PersonalChatID: telegramPersonalChatId,
 			GroupChatID:    telegramGroupChatId,
 		},
+		IGSettings: IGSettings{
+			SessionID: igSessionID,
+			CSRFToken: igCSRFToken,
+		},
 	}
 }
+
+const walletSubject = "wallet-user"
 
 func JwtCreateToken(walletSettings WalletSettings, userPassword string) string {
 
@@ -129,8 +151,8 @@ func JwtCreateToken(walletSettings WalletSettings, userPassword string) string {
 	}
 
 	claims := jwt.RegisteredClaims{
-		Subject:   userPassword,
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		Subject:   walletSubject,
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(12 * time.Hour)),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	}
 
@@ -145,16 +167,21 @@ func JwtCreateToken(walletSettings WalletSettings, userPassword string) string {
 func JwtValidateToken(walletSettings WalletSettings, token string) bool {
 	trimmed := strings.TrimPrefix(token, "Bearer ")
 
-	parsedToken, err := jwt.ParseWithClaims(trimmed, &jwt.RegisteredClaims{}, func(t *jwt.Token) (interface{}, error) {
-		return []byte(walletSettings.SecretKey), nil
-	})
+	parsedToken, err := jwt.ParseWithClaims(
+		trimmed,
+		&jwt.RegisteredClaims{},
+		func(t *jwt.Token) (interface{}, error) {
+			return []byte(walletSettings.SecretKey), nil
+		},
+		jwt.WithValidMethods([]string{"HS256"}), // pin the algorithm; reject anything else
+	)
 
 	if err != nil {
 		return false
 	}
 
 	if claims, ok := parsedToken.Claims.(*jwt.RegisteredClaims); ok && parsedToken.Valid {
-		return claims.Subject == walletSettings.Password
+		return claims.Subject == walletSubject
 	}
 
 	return false

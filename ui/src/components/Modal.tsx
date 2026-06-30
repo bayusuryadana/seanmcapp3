@@ -112,7 +112,7 @@ export const WalletModal = (props: WalletModalProps) => {
 
   const submitDelete = () => {
     const id = parseInt(props.walletDetail?.id.toString() ?? '-1')
-    axios.get(API_URL + '/api/wallet/delete/' + id, {
+    axios.delete(API_URL + '/api/wallet/delete/' + id, {
       headers: {
         Authorization: 'Bearer ' + (userContext ?? "")
       }

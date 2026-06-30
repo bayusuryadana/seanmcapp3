@@ -3,7 +3,6 @@ package repository
 import (
 	"database/sql"
 	"errors"
-	"log"
 )
 
 type Wallet struct {
@@ -32,7 +31,6 @@ type WalletRepoImpl struct {
 func (r *WalletRepoImpl) GetAll() ([]Wallet, error) {
 	rows, err := r.DB.Query("SELECT * FROM wallets")
 	if err != nil {
-		log.Println("failed to fetch Wallet.GetAll", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -51,7 +49,6 @@ func (r *WalletRepoImpl) GetAll() ([]Wallet, error) {
 func (r *WalletRepoImpl) GetAllocations() (map[string]int, error) {
 	rows, err := r.DB.Query("SELECT category, amount FROM allocations")
 	if err != nil {
-		log.Println("failed to fetch Wallet.GetAllocations", err)
 		return nil, err
 	}
 	defer rows.Close()
@@ -78,7 +75,6 @@ func (r *WalletRepoImpl) Insert(wallet Wallet) (int, error) {
 		wallet.Amount, wallet.Done, wallet.Account).Scan(&id)
 
 	if err != nil {
-		log.Println("failed to run Wallet.Insert", err)
 		return -1, err
 	}
 
@@ -96,8 +92,7 @@ func (r *WalletRepoImpl) Update(wallet Wallet) (int, error) {
 		wallet.Date, wallet.Name, wallet.Category, wallet.Currency,
 		wallet.Amount, wallet.Done, wallet.Account, *wallet.ID).Scan(&id)
 	if err == sql.ErrNoRows {
-		log.Println("failed to run Wallet.Update", err)
-		return -1, nil
+		return -1, ErrNotFound
 	}
 	return id, err
 }
@@ -106,8 +101,7 @@ func (r *WalletRepoImpl) Delete(id int) (int, error) {
 	var deletedID int
 	err := r.DB.QueryRow("DELETE FROM wallets WHERE id=$1 RETURNING id", id).Scan(&deletedID)
 	if err == sql.ErrNoRows {
-		log.Println("failed to run Wallet.Delete", err)
-		return -1, nil
+		return -1, ErrNotFound
 	}
 	return deletedID, err
 }

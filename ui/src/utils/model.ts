@@ -4,7 +4,6 @@ export type WalletDashboardData = {
   savings: WalletSavings;
   planned: WalletPlanned;
   detail: WalletDetail[];
-  stocks: WalletStock[]
 }
 
 export type WalletChart = {

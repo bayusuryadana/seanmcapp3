@@ -71,7 +71,7 @@ func (r *StockRepoImpl) Update(stock Stock) (string, error) {
 		WHERE name=$7 RETURNING name`,
 		stock.BestPrice, stock.CurrentPrice, stock.FairPrice, boolToBit(stock.Status), stock.BuyPrice, stock.Lot, stock.Name).Scan(&name)
 	if err == sql.ErrNoRows {
-		return "", nil
+		return "", ErrNotFound
 	}
 	return name, err
 }
@@ -80,7 +80,7 @@ func (r *StockRepoImpl) Delete(name string) (string, error) {
 	var deletedName string
 	err := r.DB.QueryRow("DELETE FROM stocks WHERE name=$1 RETURNING name", name).Scan(&deletedName)
 	if err == sql.ErrNoRows {
-		return "", nil
+		return "", ErrNotFound
 	}
 	return deletedName, err
 }

@@ -132,7 +132,7 @@ export const WalletStockModal = (props: Props) => {
 
     const submitDelete = () => {
         const name = props.walletStock?.name ?? ''
-        axios.get(API_URL + '/api/stock/delete/' + name, {
+        axios.delete(API_URL + '/api/stock/delete/' + name, {
             headers: { Authorization: 'Bearer ' + (userContext ?? "") }
         }).then((response) => {
             if (response.data.data === name) {

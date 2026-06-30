@@ -1,10 +1,11 @@
 package bootstrap
 
 import (
-	"io"
+	"errors"
 	"log"
 	"net/http"
 	"os"
+	"seanmcapp/repository"
 	"seanmcapp/service"
 	"seanmcapp/util"
 	"strconv"
@@ -14,7 +15,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func InitRouter(mainServices MainServices) {
+func InitRouter(mainServices MainServices, walletSettings util.WalletSettings) *gin.Engine {
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:8080", "https://seanmcapp.herokuapp.com"},
@@ -34,20 +35,20 @@ func InitRouter(mainServices MainServices) {
 	api := r.Group("/api")
 	{
 		api.POST("/webhook", func(c *gin.Context) {
-			body, _ := io.ReadAll(c.Request.Body)
-			result := telegramWebhookServiceReceive(string(body))
-			c.JSON(http.StatusOK, result)
+			c.JSON(http.StatusOK, gin.H{"status": "ok"})
 		})
 
 		wallet := api.Group("/wallet")
 		{
-			wallet.GET("/login/", func(c *gin.Context) {
-				c.String(http.StatusUnauthorized, "Invalid password")
-			})
-
-			wallet.GET("/login/:password", func(c *gin.Context) {
-				userPassword := c.Param("password")
-				token := util.JwtCreateToken(util.GetAppSettings().WalletSettings, userPassword)
+			wallet.POST("/login", func(c *gin.Context) {
+				var body struct {
+					Password string `json:"password"`
+				}
+				if err := c.ShouldBindJSON(&body); err != nil {
+					c.String(http.StatusBadRequest, "Invalid request")
+					return
+				}
+				token := util.JwtCreateToken(walletSettings, body.Password)
 				if token == "" {
 					c.String(http.StatusUnauthorized, "Invalid password")
 				} else {
@@ -55,35 +56,17 @@ func InitRouter(mainServices MainServices) {
 				}
 			})
 
-			wallet.GET("/dashboard", authMiddleware(), func(c *gin.Context) {
+			wallet.GET("/dashboard", authMiddleware(walletSettings), func(c *gin.Context) {
 				dateStr := c.Query("date")
 				date, _ := strconv.Atoi(dateStr)
 				res, err := mainServices.WalletService.Dashboard(date)
 				resolve(c, res, err)
 			})
 
-			wallet.POST("/create", authMiddleware(), func(c *gin.Context) {
-				var payload service.DashboardWallet
-				if err := c.ShouldBindJSON(&payload); err != nil {
-					c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
-					return
-				}
+			wallet.POST("/create", authMiddleware(walletSettings), handleJSON(mainServices.WalletService.Create))
+			wallet.POST("/update", authMiddleware(walletSettings), handleJSON(mainServices.WalletService.Update))
 
-				res, err := mainServices.WalletService.Create(payload)
-				resolve(c, res, err)
-			})
-
-			wallet.POST("/update", authMiddleware(), func(c *gin.Context) {
-				var payload service.DashboardWallet
-				if err := c.ShouldBindJSON(&payload); err != nil {
-					c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
-					return
-				}
-				res, err := mainServices.WalletService.Update(payload)
-				resolve(c, res, err)
-			})
-
-			wallet.GET("/delete/:id", authMiddleware(), func(c *gin.Context) {
+			wallet.DELETE("/delete/:id", authMiddleware(walletSettings), func(c *gin.Context) {
 				idStr := c.Param("id")
 				id, _ := strconv.Atoi(idStr)
 				res, err := mainServices.WalletService.Delete(id)
@@ -93,57 +76,49 @@ func InitRouter(mainServices MainServices) {
 
 		stock := api.Group("/stock")
 		{
-			stock.POST("/getAll", authMiddleware(), func(c *gin.Context) {
+			stock.POST("/getAll", authMiddleware(walletSettings), func(c *gin.Context) {
 				res, err := mainServices.StockService.GetAll()
 				resolve(c, res, err)
 			})
 
-			stock.POST("/refresh", authMiddleware(), func(c *gin.Context) {
+			stock.POST("/refresh", authMiddleware(walletSettings), func(c *gin.Context) {
 				res, err := mainServices.StockService.RefreshPrices()
 				resolve(c, res, err)
 			})
 
-			stock.POST("/create", authMiddleware(), func(c *gin.Context) {
-				var payload service.DashboardStock
-				if err := c.ShouldBindJSON(&payload); err != nil {
-					c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
-					return
-				}
+			stock.POST("/create", authMiddleware(walletSettings), handleJSON(mainServices.StockService.Create))
+			stock.POST("/update", authMiddleware(walletSettings), handleJSON(mainServices.StockService.Update))
 
-				res, err := mainServices.StockService.Create(payload)
-				resolve(c, res, err)
-			})
-
-			stock.POST("/update", authMiddleware(), func(c *gin.Context) {
-				var payload service.DashboardStock
-				if err := c.ShouldBindJSON(&payload); err != nil {
-					c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
-					return
-				}
-				res, err := mainServices.StockService.Update(payload)
-				resolve(c, res, err)
-			})
-
-			stock.GET("/delete/:id", authMiddleware(), func(c *gin.Context) {
+			stock.DELETE("/delete/:id", authMiddleware(walletSettings), func(c *gin.Context) {
 				name := c.Param("id")
 				res, err := mainServices.StockService.Delete(name)
 				resolve(c, res, err)
 			})
 		}
+
+		instagram := api.Group("/instagram")
+		{
+			instagram.GET("/trigger", func(c *gin.Context) {
+				go safeRun(mainServices.InstagramService.Run)
+				c.JSON(http.StatusOK, gin.H{"data": "Instagram fetch triggered"})
+			})
+		}
 	}
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080" // fallback for local dev
-	}
+	return r
+}
 
-	if err := r.Run(":" + port); err != nil {
-		log.Fatal(err)
-	}
+func safeRun(fn func()) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[ERROR] recovered from panic in background job: %v", r)
+		}
+	}()
+	fn()
 }
 
 // Auth Middleware
-func authMiddleware() gin.HandlerFunc {
+func authMiddleware(walletSettings util.WalletSettings) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.Method == http.MethodOptions {
 			// Let preflight through
@@ -152,7 +127,7 @@ func authMiddleware() gin.HandlerFunc {
 		}
 
 		token := c.GetHeader("Authorization")
-		if !util.JwtValidateToken(util.GetAppSettings().WalletSettings, token) {
+		if !util.JwtValidateToken(walletSettings, token) {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
 			return
 		}
@@ -171,14 +146,30 @@ func serveIndex(c *gin.Context) {
 }
 
 func resolve[T any](c *gin.Context, result T, err error) {
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if err == nil {
+		c.JSON(http.StatusOK, gin.H{"data": result})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": result})
+
+	var ve service.ValidationError
+	switch {
+	case errors.As(err, &ve):
+		c.JSON(http.StatusBadRequest, gin.H{"error": ve.Message})
+	case errors.Is(err, repository.ErrNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+	}
 }
 
-// Temp function
-func telegramWebhookServiceReceive(payload string) any {
-	return gin.H{"status": "received", "payload": payload}
+func handleJSON[Req any, Res any](fn func(Req) (Res, error)) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var payload Req
+		if err := c.ShouldBindJSON(&payload); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid JSON"})
+			return
+		}
+		res, err := fn(payload)
+		resolve(c, res, err)
+	}
 }
