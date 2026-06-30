@@ -7,9 +7,13 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-func InitScheduler(mainServices MainServices) {
+func InitScheduler(mainServices MainServices) *cron.Cron {
 	loc, _ := time.LoadLocation("Asia/Jakarta")
-	c := cron.New(cron.WithSeconds(), cron.WithLocation(loc))
+	c := cron.New(
+		cron.WithSeconds(),
+		cron.WithLocation(loc),
+		cron.WithChain(cron.Recover(cron.DefaultLogger)),
+	)
 
 	schedulers := []*Scheduler{
 		{Task: mainServices.BirthdayService, CronExpr: "0 0 8 * * *", Repeat: true},
@@ -27,6 +31,7 @@ func InitScheduler(mainServices MainServices) {
 
 	log.Println("Running scheduled jobs...")
 	c.Start()
+	return c
 }
 
 type ScheduledTask interface {

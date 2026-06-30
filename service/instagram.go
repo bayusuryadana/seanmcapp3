@@ -27,6 +27,7 @@ type InstagramServiceImpl struct {
 	InstagramClient      external.InstagramClient
 	TelegramClient       external.TelegramClient
 	PersonalChatID       int64
+	guard                runGuard
 }
 
 type igPost struct {
@@ -35,40 +36,42 @@ type igPost struct {
 }
 
 func (s *InstagramServiceImpl) Run() {
-	accounts, err := s.InstagramAccountRepo.GetAll()
-	if err != nil {
-		log.Println("[ERROR] fetching instagram accounts:", err)
-		return
-	}
-
-	for i, account := range accounts {
-		if i > 0 {
-			time.Sleep(5 * time.Second)
-		}
-
-		log.Printf("Checking Instagram account: %s", account.Username)
-		posts, err := s.fetchLatestPosts(account.Username)
+	s.guard.run("instagram run", func() {
+		accounts, err := s.InstagramAccountRepo.GetAll()
 		if err != nil {
-			log.Printf("[ERROR] fetching posts for %s: %v", account.Username, err)
-			continue
+			log.Println("[ERROR] fetching instagram accounts:", err)
+			return
 		}
 
-		newPosts := detectNewPosts(account.LastShortcodes, posts)
+		for i, account := range accounts {
+			if i > 0 {
+				time.Sleep(5 * time.Second)
+			}
 
-		if len(newPosts) > 0 {
-			s.notify(account.Username, newPosts)
-		} else {
-			log.Printf("No new posts for %s", account.Username)
-		}
+			log.Printf("Checking Instagram account: %s", account.Username)
+			posts, err := s.fetchLatestPosts(account.Username)
+			if err != nil {
+				log.Printf("[ERROR] fetching posts for %s: %v", account.Username, err)
+				continue
+			}
 
-		shortcodes := make([]string, len(posts))
-		for i, p := range posts {
-			shortcodes[i] = p.Shortcode
+			newPosts := detectNewPosts(account.LastShortcodes, posts)
+
+			if len(newPosts) > 0 {
+				s.notify(account.Username, newPosts)
+			} else {
+				log.Printf("No new posts for %s", account.Username)
+			}
+
+			shortcodes := make([]string, len(posts))
+			for i, p := range posts {
+				shortcodes[i] = p.Shortcode
+			}
+			if err := s.InstagramAccountRepo.UpdateLastShortcodes(account.Username, strings.Join(shortcodes, ",")); err != nil {
+				log.Printf("[ERROR] updating shortcodes for %s: %v", account.Username, err)
+			}
 		}
-		if err := s.InstagramAccountRepo.UpdateLastShortcodes(account.Username, strings.Join(shortcodes, ",")); err != nil {
-			log.Printf("[ERROR] updating shortcodes for %s: %v", account.Username, err)
-		}
-	}
+	})
 }
 
 func (s *InstagramServiceImpl) fetchLatestPosts(username string) ([]igPost, error) {

@@ -1,8 +1,12 @@
 package bootstrap
 
 import (
+	"errors"
+	"log"
 	"net/http"
 	"os"
+	"seanmcapp/repository"
+	"seanmcapp/service"
 	"seanmcapp/util"
 	"strconv"
 	"time"
@@ -62,7 +66,7 @@ func InitRouter(mainServices MainServices, walletSettings util.WalletSettings) *
 			wallet.POST("/create", authMiddleware(walletSettings), handleJSON(mainServices.WalletService.Create))
 			wallet.POST("/update", authMiddleware(walletSettings), handleJSON(mainServices.WalletService.Update))
 
-			wallet.GET("/delete/:id", authMiddleware(walletSettings), func(c *gin.Context) {
+			wallet.DELETE("/delete/:id", authMiddleware(walletSettings), func(c *gin.Context) {
 				idStr := c.Param("id")
 				id, _ := strconv.Atoi(idStr)
 				res, err := mainServices.WalletService.Delete(id)
@@ -85,7 +89,7 @@ func InitRouter(mainServices MainServices, walletSettings util.WalletSettings) *
 			stock.POST("/create", authMiddleware(walletSettings), handleJSON(mainServices.StockService.Create))
 			stock.POST("/update", authMiddleware(walletSettings), handleJSON(mainServices.StockService.Update))
 
-			stock.GET("/delete/:id", authMiddleware(walletSettings), func(c *gin.Context) {
+			stock.DELETE("/delete/:id", authMiddleware(walletSettings), func(c *gin.Context) {
 				name := c.Param("id")
 				res, err := mainServices.StockService.Delete(name)
 				resolve(c, res, err)
@@ -95,13 +99,22 @@ func InitRouter(mainServices MainServices, walletSettings util.WalletSettings) *
 		instagram := api.Group("/instagram")
 		{
 			instagram.GET("/trigger", func(c *gin.Context) {
-				go mainServices.InstagramService.Run()
+				go safeRun(mainServices.InstagramService.Run)
 				c.JSON(http.StatusOK, gin.H{"data": "Instagram fetch triggered"})
 			})
 		}
 	}
 
 	return r
+}
+
+func safeRun(fn func()) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[ERROR] recovered from panic in background job: %v", r)
+		}
+	}()
+	fn()
 }
 
 // Auth Middleware
@@ -133,11 +146,20 @@ func serveIndex(c *gin.Context) {
 }
 
 func resolve[T any](c *gin.Context, result T, err error) {
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+	if err == nil {
+		c.JSON(http.StatusOK, gin.H{"data": result})
 		return
 	}
-	c.JSON(http.StatusOK, gin.H{"data": result})
+
+	var ve service.ValidationError
+	switch {
+	case errors.As(err, &ve):
+		c.JSON(http.StatusBadRequest, gin.H{"error": ve.Message})
+	case errors.Is(err, repository.ErrNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "internal server error"})
+	}
 }
 
 func handleJSON[Req any, Res any](fn func(Req) (Res, error)) gin.HandlerFunc {

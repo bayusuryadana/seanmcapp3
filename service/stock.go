@@ -24,6 +24,7 @@ type StockServiceImpl struct {
 	StockClient    external.StockClient
 	TelegramClient external.TelegramClient
 	PersonalChatID int64
+	guard          runGuard
 }
 
 func (s *StockServiceImpl) Run() {
@@ -68,27 +69,29 @@ func (s *StockServiceImpl) Run() {
 }
 
 func (s *StockServiceImpl) fetchAndUpdatePrices(stocks []DashboardStock) {
-	for _, stock := range stocks {
-		currentPrice, err := s.StockClient.GetPrice(stock.Name)
-		if err != nil {
-			log.Printf("[ERROR] %v\n", err)
-			continue
-		}
+	s.guard.run("stock refresh", func() {
+		for _, stock := range stocks {
+			currentPrice, err := s.StockClient.GetPrice(stock.Name)
+			if err != nil {
+				log.Printf("[ERROR] %v\n", err)
+				continue
+			}
 
-		updatedStock := repository.Stock{
-			Name:         stock.Name,
-			BestPrice:    stock.BestPrice,
-			CurrentPrice: &currentPrice,
-			FairPrice:    stock.FairPrice,
-			Status:       stock.Status,
-			BuyPrice:     stock.BuyPrice,
-			Lot:          stock.Lot,
+			updatedStock := repository.Stock{
+				Name:         stock.Name,
+				BestPrice:    stock.BestPrice,
+				CurrentPrice: &currentPrice,
+				FairPrice:    stock.FairPrice,
+				Status:       stock.Status,
+				BuyPrice:     stock.BuyPrice,
+				Lot:          stock.Lot,
+			}
+			if _, err := s.StockRepo.Update(updatedStock); err != nil {
+				log.Printf("[ERROR] cannot update stock: %v\n", err)
+				continue
+			}
 		}
-		if _, err := s.StockRepo.Update(updatedStock); err != nil {
-			log.Printf("[ERROR] cannot update stock: %v\n", err)
-			continue
-		}
-	}
+	})
 }
 
 func (s *StockServiceImpl) RefreshPrices() ([]DashboardStock, error) {
@@ -118,7 +121,7 @@ func (s *StockServiceImpl) GetAll() ([]DashboardStock, error) {
 
 func (s *StockServiceImpl) Create(stock DashboardStock) (string, error) {
 	if stock.BestPrice <= 0 || stock.FairPrice <= 0 {
-		return "", errors.New("best_price and fair_price are required and must be > 0")
+		return "", ValidationError{Message: "best_price and fair_price are required and must be > 0"}
 	}
 	st := repository.Stock(stock)
 	name, err := s.StockRepo.Create(st)
@@ -130,11 +133,11 @@ func (s *StockServiceImpl) Create(stock DashboardStock) (string, error) {
 
 func (s *StockServiceImpl) Update(stock DashboardStock) (string, error) {
 	if stock.BestPrice <= 0 || stock.FairPrice <= 0 {
-		return "", errors.New("best_price and fair_price are required and must be > 0")
+		return "", ValidationError{Message: "best_price and fair_price are required and must be > 0"}
 	}
 	st := repository.Stock(stock)
 	name, err := s.StockRepo.Update(st)
-	if err != nil {
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		log.Printf("[ERROR] cannot update stock: %v\n", err)
 	}
 	return name, err
@@ -142,7 +145,7 @@ func (s *StockServiceImpl) Update(stock DashboardStock) (string, error) {
 
 func (s *StockServiceImpl) Delete(name string) (string, error) {
 	deletedName, err := s.StockRepo.Delete(name)
-	if err != nil {
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		log.Printf("[ERROR] cannot delete stock: %v\n", err)
 	}
 	return deletedName, err

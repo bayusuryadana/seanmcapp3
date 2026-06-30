@@ -25,7 +25,7 @@ func main() {
 	mainServices, db := bootstrap.GetMainServices(settings)
 	defer db.Close()
 
-	bootstrap.InitScheduler(mainServices)
+	cronScheduler := bootstrap.InitScheduler(mainServices)
 
 	router := bootstrap.InitRouter(mainServices, settings.WalletSettings)
 
@@ -51,7 +51,16 @@ func main() {
 	log.Println("shutting down gracefully...")
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
+
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Printf("graceful shutdown failed: %v", err)
+	}
+
+	// Let in-flight cron jobs finish (bounded by the same deadline) so a
+	// background job isn't severed mid-write on a Heroku restart.
+	select {
+	case <-cronScheduler.Stop().Done():
+	case <-shutdownCtx.Done():
+		log.Println("cron jobs did not finish before shutdown deadline")
 	}
 }

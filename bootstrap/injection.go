@@ -2,8 +2,9 @@ package bootstrap
 
 import (
 	"database/sql"
-	"fmt"
 	"log"
+	"net"
+	"net/url"
 	"seanmcapp/external"
 	"seanmcapp/repository"
 	"seanmcapp/service"
@@ -23,18 +24,19 @@ type MainServices struct {
 
 func GetMainServices(settings util.AppsSettings) (MainServices, *sql.DB) {
 
-	connStr := fmt.Sprintf(
-		"host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",
-		settings.DBSettings.Host, 5432, settings.DBSettings.User, settings.DBSettings.Pass, settings.DBSettings.Name, "require",
-	)
+	dsn := url.URL{
+		Scheme:   "postgres",
+		User:     url.UserPassword(settings.DBSettings.User, settings.DBSettings.Pass),
+		Host:     net.JoinHostPort(settings.DBSettings.Host, "5432"),
+		Path:     settings.DBSettings.Name,
+		RawQuery: "sslmode=require",
+	}
 
-	db, err := sql.Open("postgres", connStr)
+	db, err := sql.Open("postgres", dsn.String())
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// sql.Open does not actually connect; Ping verifies the database is
-	// reachable so a bad config fails fast at startup instead of on first query.
 	if err := db.Ping(); err != nil {
 		log.Fatalf("cannot reach database: %v", err)
 	}

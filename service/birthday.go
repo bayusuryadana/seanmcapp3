@@ -17,18 +17,21 @@ type BirthdayServiceImpl struct {
 	PeopleRepo     repository.PeopleRepo
 	TelegramClient external.TelegramClient
 	PersonalChatID int64
+	guard          runGuard
 }
 
 func (b *BirthdayServiceImpl) Run() {
-	now := time.Now()
-	tmr := now.Add(24 * time.Hour)
-	nextWeek := now.Add(7 * 24 * time.Hour)
+	b.guard.run("birthday run", func() {
+		now := time.Now()
+		tmr := now.Add(24 * time.Hour)
+		nextWeek := now.Add(7 * 24 * time.Hour)
 
-	today := b.sendForDay(now.Day(), int(now.Month()), 0)
-	tomorrow := b.sendForDay(tmr.Day(), int(tmr.Month()), 1)
-	nextWeekPpl := b.sendForDay(nextWeek.Day(), int(nextWeek.Month()), 7)
+		today := b.sendForDay(now.Day(), int(now.Month()), 0)
+		tomorrow := b.sendForDay(tmr.Day(), int(tmr.Month()), 1)
+		nextWeekPpl := b.sendForDay(nextWeek.Day(), int(nextWeek.Month()), 7)
 
-	log.Println("[INFO] " + strconv.Itoa(today+tomorrow+nextWeekPpl) + " people has birthday today")
+		log.Println("[INFO] " + strconv.Itoa(today+tomorrow+nextWeekPpl) + " people has birthday today")
+	})
 }
 
 func (b *BirthdayServiceImpl) sendForDay(day, month, numOfDays int) int {

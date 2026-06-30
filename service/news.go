@@ -22,6 +22,7 @@ type NewsServiceImpl struct {
 	GroupChatID    int64
 	httpClient     *http.Client
 	sources        []NewsObject
+	guard          runGuard
 }
 
 func NewNewsService(telegramClient external.TelegramClient, groupChatID int64) *NewsServiceImpl {
@@ -41,32 +42,31 @@ func NewNewsService(telegramClient external.TelegramClient, groupChatID int64) *
 }
 
 func (s *NewsServiceImpl) Run() {
-	var results []NewsResult
+	s.guard.run("news run", func() {
+		var results []NewsResult
 
-	for _, news := range s.sources {
-		result, err := s.fetchNews(news)
-		if err != nil {
-			log.Printf("[ERROR] %s: %v\n", news.Name(), err)
-			continue
+		for _, news := range s.sources {
+			result, err := s.fetchNews(news)
+			if err != nil {
+				log.Printf("[ERROR] %s: %v\n", news.Name(), err)
+				continue
+			}
+			results = append(results, result)
 		}
-		results = append(results, result)
-	}
 
-	message := "Awali harimu dengan berita 📰 dari **Seanmctoday** by @seanmcbot\n\n"
-	for _, res := range results {
-		flags := ""
-		for _, f := range res.NewsSource.Flag() {
-			flags += string(rune(f))
+		message := "Awali harimu dengan berita 📰 dari **Seanmctoday** by @seanmcbot\n\n"
+		for _, res := range results {
+			flags := ""
+			for _, f := range res.NewsSource.Flag() {
+				flags += string(rune(f))
+			}
+			message += fmt.Sprintf("%s %s - [%s](%s)\n\n", flags, res.NewsSource.Name(), strings.TrimSpace(res.Title), res.URL)
 		}
-		message += fmt.Sprintf("%s %s - [%s](%s)\n\n", flags, res.NewsSource.Name(), strings.TrimSpace(res.Title), res.URL)
-	}
 
-	s.TelegramClient.SendMessage(s.GroupChatID, message)
+		s.TelegramClient.SendMessage(s.GroupChatID, message)
+	})
 }
 
-// fetchNews retrieves and parses a single news source. Keeping it a method
-// scopes resp.Body.Close() to one fetch (no leaked bodies) and lets it reuse
-// the service's shared, timeout-bounded HTTP client.
 func (s *NewsServiceImpl) fetchNews(news NewsObject) (NewsResult, error) {
 	resp, err := s.httpClient.Get(news.URL())
 	if err != nil {

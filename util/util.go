@@ -152,7 +152,7 @@ func JwtCreateToken(walletSettings WalletSettings, userPassword string) string {
 
 	claims := jwt.RegisteredClaims{
 		Subject:   walletSubject,
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
+		ExpiresAt: jwt.NewNumericDate(time.Now().Add(12 * time.Hour)),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	}
 

@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"log"
 	"seanmcapp/repository"
 	"sort"
@@ -17,10 +18,15 @@ type WalletServiceImpl struct {
 	WalletRepo repository.WalletRepo
 }
 
-var expenseSet = map[string]struct{}{
-	"Daily": {}, "Rent": {}, "Travel": {}, "Fashion": {},
-	"IT Stuff": {}, "Misc": {}, "Wellness": {}, "Funding": {},
-}
+var expenseCategories = []string{"Daily", "Rent", "Travel", "Fashion", "IT Stuff", "Misc", "Wellness", "Funding"}
+
+var expenseSet = func() map[string]struct{} {
+	set := make(map[string]struct{}, len(expenseCategories))
+	for _, c := range expenseCategories {
+		set[c] = struct{}{}
+	}
+	return set
+}()
 
 func (s *WalletServiceImpl) Dashboard(date int) (*DashboardView, error) {
 	wallets, err := s.WalletRepo.GetAll()
@@ -54,9 +60,8 @@ func (s *WalletServiceImpl) Dashboard(date int) (*DashboardView, error) {
 	}
 
 	// fixed order
-	categories := []string{"Daily", "Rent", "Travel", "Fashion", "IT Stuff", "Misc", "Wellness", "Funding"}
 	var alloc []DashboardAllocations
-	for _, cat := range categories {
+	for _, cat := range expenseCategories {
 		alloc = append(alloc, DashboardAllocations{
 			Name:    cat,
 			Expense: ytdExpenses[cat],
@@ -141,7 +146,7 @@ func (s *WalletServiceImpl) Create(wallet DashboardWallet) (int, error) {
 func (s *WalletServiceImpl) Update(wallet DashboardWallet) (int, error) {
 	w := repository.Wallet(wallet)
 	id, err := s.WalletRepo.Update(w)
-	if err != nil {
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		log.Println("Failed to update wallet", err)
 	}
 	return id, err
@@ -149,7 +154,7 @@ func (s *WalletServiceImpl) Update(wallet DashboardWallet) (int, error) {
 
 func (s *WalletServiceImpl) Delete(id int) (int, error) {
 	deletedID, err := s.WalletRepo.Delete(id)
-	if err != nil {
+	if err != nil && !errors.Is(err, repository.ErrNotFound) {
 		log.Println("Failed to delete wallet", err)
 	}
 	return deletedID, err

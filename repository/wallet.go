@@ -92,7 +92,7 @@ func (r *WalletRepoImpl) Update(wallet Wallet) (int, error) {
 		wallet.Date, wallet.Name, wallet.Category, wallet.Currency,
 		wallet.Amount, wallet.Done, wallet.Account, *wallet.ID).Scan(&id)
 	if err == sql.ErrNoRows {
-		return -1, nil
+		return -1, ErrNotFound
 	}
 	return id, err
 }
@@ -101,7 +101,7 @@ func (r *WalletRepoImpl) Delete(id int) (int, error) {
 	var deletedID int
 	err := r.DB.QueryRow("DELETE FROM wallets WHERE id=$1 RETURNING id", id).Scan(&deletedID)
 	if err == sql.ErrNoRows {
-		return -1, nil
+		return -1, ErrNotFound
 	}
 	return deletedID, err
 }
