@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"seanmcapp/external"
-	"seanmcapp/util"
 	"strings"
 
 	"github.com/PuerkitoBio/goquery"
@@ -19,6 +18,7 @@ type NewsService interface {
 
 type NewsServiceImpl struct {
 	TelegramClient external.TelegramClient
+	GroupChatID    int64
 }
 
 func (s *NewsServiceImpl) Run() {
@@ -75,8 +75,7 @@ func (s *NewsServiceImpl) Run() {
 		message += fmt.Sprintf("%s %s - [%s](%s)\n\n", flags, res.NewsSource.Name(), strings.TrimSpace(res.Title), res.URL)
 	}
 
-	groupChatId := util.GetAppSettings().TelegramSettings.GroupChatID
-	s.TelegramClient.SendMessage(groupChatId, message)
+	s.TelegramClient.SendMessage(s.GroupChatID, message)
 }
 
 type NewsObject interface {

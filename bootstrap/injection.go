@@ -40,12 +40,13 @@ func GetMainServices(settings util.AppsSettings) (MainServices, *sql.DB) {
 
 	telegramClient := &external.TelegramClientImpl{Endpoint: settings.TelegramSettings.Endpoint, Botname: settings.TelegramSettings.Botname}
 	instagramClient := external.NewInstagramClient(settings.IGSettings.SessionID, settings.IGSettings.CSRFToken)
+	stockClient := &external.StockClientImpl{}
 
 	warmupDBService := &service.WarmupDBServiceImpl{PeopleRepo: peopleRepo}
-	birthdayService := &service.BirthdayServiceImpl{PeopleRepo: peopleRepo, TelegramClient: telegramClient}
+	birthdayService := &service.BirthdayServiceImpl{PeopleRepo: peopleRepo, TelegramClient: telegramClient, PersonalChatID: settings.TelegramSettings.PersonalChatID}
 	walletService := &service.WalletServiceImpl{WalletRepo: walletRepo, StockRepo: stockRepo}
-	newsService := &service.NewsServiceImpl{TelegramClient: telegramClient}
-	stockService := &service.StockServiceImpl{StockRepo: stockRepo, TelegramClient: telegramClient}
+	newsService := &service.NewsServiceImpl{TelegramClient: telegramClient, GroupChatID: settings.TelegramSettings.GroupChatID}
+	stockService := &service.StockServiceImpl{StockRepo: stockRepo, StockClient: stockClient, TelegramClient: telegramClient, PersonalChatID: settings.TelegramSettings.PersonalChatID}
 	instagramService := &service.InstagramServiceImpl{InstagramAccountRepo: instagramAccountRepo, InstagramClient: instagramClient, TelegramClient: telegramClient}
 
 	return MainServices{

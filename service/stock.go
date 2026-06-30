@@ -3,15 +3,10 @@ package service
 import (
 	"errors"
 	"fmt"
-	"io"
 	"log"
-	"net/http"
 	"seanmcapp/external"
 	"seanmcapp/repository"
-	"seanmcapp/util"
 	"strings"
-
-	"github.com/tidwall/gjson"
 )
 
 type StockService interface {
@@ -26,12 +21,10 @@ type StockService interface {
 
 type StockServiceImpl struct {
 	StockRepo      repository.StockRepo
+	StockClient    external.StockClient
 	TelegramClient external.TelegramClient
+	PersonalChatID int64
 }
-
-var urlTemplate = "https://query1.finance.yahoo.com/v8/finance/chart/{{name}}.jk"
-
-const browserUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
 
 func (s *StockServiceImpl) Run() {
 	stocks, err := s.GetAll()
@@ -67,8 +60,7 @@ func (s *StockServiceImpl) Run() {
 	if len(result) > 0 {
 		log.Println("[INFO] stocks hit/reach")
 		finalResult := strings.Join(result, "\n")
-		personalChatId := util.GetAppSettings().TelegramSettings.PersonalChatID
-		_, err := s.TelegramClient.SendMessage(personalChatId, finalResult)
+		_, err := s.TelegramClient.SendMessage(s.PersonalChatID, finalResult)
 		if err != nil {
 			log.Printf("[ERROR] cannot send message for the final result: %v\n", err)
 		}
@@ -77,50 +69,24 @@ func (s *StockServiceImpl) Run() {
 
 func (s *StockServiceImpl) fetchAndUpdatePrices(stocks []DashboardStock) {
 	for _, stock := range stocks {
-		stockUrl := strings.NewReplacer(
-			"{{name}}", stock.Name,
-		).Replace(urlTemplate)
-
-		req, err := http.NewRequest(http.MethodGet, stockUrl, nil)
+		currentPrice, err := s.StockClient.GetPrice(stock.Name)
 		if err != nil {
-			log.Printf("[ERROR] cannot build request: %v\n", err)
-			continue
-		}
-		req.Header.Set("User-Agent", browserUserAgent)
-
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			log.Printf("[ERROR] cannot fetch stock data: %v\n", err)
+			log.Printf("[ERROR] %v\n", err)
 			continue
 		}
 
-		body, err := io.ReadAll(resp.Body)
-		resp.Body.Close()
-		if err != nil {
-			log.Printf("[ERROR] reading response: %v\n", err)
-			continue
+		updatedStock := repository.Stock{
+			Name:         stock.Name,
+			BestPrice:    stock.BestPrice,
+			CurrentPrice: &currentPrice,
+			FairPrice:    stock.FairPrice,
+			Status:       stock.Status,
+			BuyPrice:     stock.BuyPrice,
+			Lot:          stock.Lot,
 		}
-
-		jsonStr := string(body)
-		regularMarketPrice := gjson.Get(jsonStr, "chart.result.0.meta.regularMarketPrice")
-		if regularMarketPrice.Exists() {
-			currentPrice := regularMarketPrice.Int()
-			updatedStock := repository.Stock{
-				Name:         stock.Name,
-				BestPrice:    stock.BestPrice,
-				CurrentPrice: &currentPrice,
-				FairPrice:    stock.FairPrice,
-				Status:       stock.Status,
-				BuyPrice:     stock.BuyPrice,
-				Lot:          stock.Lot,
-			}
-			_, err := s.StockRepo.Update(updatedStock)
-			if err != nil {
-				log.Printf("[ERROR] cannot update stock: %v\n", err)
-				continue
-			}
-		} else {
-			log.Printf("[ERROR] stock %s not found in json\n", stock.Name)
+		if _, err := s.StockRepo.Update(updatedStock); err != nil {
+			log.Printf("[ERROR] cannot update stock: %v\n", err)
+			continue
 		}
 	}
 }

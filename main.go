@@ -14,10 +14,12 @@ func main() {
 		log.Println(".env file not found, relying on system environment variables")
 	}
 
-	mainServices, db := bootstrap.GetMainServices(util.GetAppSettings())
+	settings := util.GetAppSettings()
+
+	mainServices, db := bootstrap.GetMainServices(settings)
 	defer db.Close()
 
 	bootstrap.InitScheduler(mainServices)
-	bootstrap.InitRouter(mainServices)
+	bootstrap.InitRouter(mainServices, settings.WalletSettings)
 
 }
