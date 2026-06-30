@@ -130,6 +130,14 @@ func InitRouter(mainServices MainServices) {
 				resolve(c, res, err)
 			})
 		}
+
+		instagram := api.Group("/instagram")
+		{
+			instagram.GET("/trigger", func(c *gin.Context) {
+				go mainServices.InstagramService.Run()
+				c.JSON(http.StatusOK, gin.H{"data": "Instagram fetch triggered"})
+			})
+		}
 	}
 
 	port := os.Getenv("PORT")

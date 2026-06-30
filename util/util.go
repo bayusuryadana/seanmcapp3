@@ -16,6 +16,12 @@ type AppsSettings struct {
 	DBSettings       DatabaseSettings
 	WalletSettings   WalletSettings
 	TelegramSettings TelegramSettings
+	IGSettings       IGSettings
+}
+
+type IGSettings struct {
+	SessionID string
+	CSRFToken string
 }
 
 type DatabaseSettings struct {
@@ -102,6 +108,16 @@ func getAppSettings() AppsSettings {
 		log.Fatal("TELEGRAM_PERSONAL_CHAT_ID is not set")
 	}
 
+	igSessionID := os.Getenv("IG_SESSION_ID")
+	if igSessionID == "" {
+		log.Fatal("IG_SESSION_ID is not set")
+	}
+
+	igCSRFToken := os.Getenv("IG_CSRF_TOKEN")
+	if igCSRFToken == "" {
+		log.Fatal("IG_CSRF_TOKEN is not set")
+	}
+
 	return AppsSettings{
 		DBSettings: DatabaseSettings{
 			Host: dbHost,
@@ -118,6 +134,10 @@ func getAppSettings() AppsSettings {
 			Botname:        telegramBotname,
 			PersonalChatID: telegramPersonalChatId,
 			GroupChatID:    telegramGroupChatId,
+		},
+		IGSettings: IGSettings{
+			SessionID: igSessionID,
+			CSRFToken: igCSRFToken,
 		},
 	}
 }

@@ -13,11 +13,12 @@ import (
 )
 
 type MainServices struct {
-	WarmupDBService service.WarmupDBService
-	BirthdayService service.BirthdayService
-	WalletService   service.WalletService
-	NewsService     service.NewsService
-	StockService    service.StockService
+	WarmupDBService   service.WarmupDBService
+	BirthdayService   service.BirthdayService
+	WalletService     service.WalletService
+	NewsService       service.NewsService
+	StockService      service.StockService
+	InstagramService  service.InstagramService
 }
 
 func GetMainServices(settings util.AppsSettings) (MainServices, *sql.DB) {
@@ -35,21 +36,25 @@ func GetMainServices(settings util.AppsSettings) (MainServices, *sql.DB) {
 	peopleRepo := &repository.PeopleRepoImpl{DB: db}
 	walletRepo := &repository.WalletRepoImpl{DB: db}
 	stockRepo := &repository.StockRepoImpl{DB: db}
+	instagramAccountRepo := &repository.InstagramAccountRepoImpl{DB: db}
 
 	telegramClient := &external.TelegramClientImpl{Endpoint: settings.TelegramSettings.Endpoint, Botname: settings.TelegramSettings.Botname}
+	instagramClient := external.NewInstagramClient(settings.IGSettings.SessionID, settings.IGSettings.CSRFToken)
 
 	warmupDBService := &service.WarmupDBServiceImpl{PeopleRepo: peopleRepo}
 	birthdayService := &service.BirthdayServiceImpl{PeopleRepo: peopleRepo, TelegramClient: telegramClient}
 	walletService := &service.WalletServiceImpl{WalletRepo: walletRepo, StockRepo: stockRepo}
 	newsService := &service.NewsServiceImpl{TelegramClient: telegramClient}
 	stockService := &service.StockServiceImpl{StockRepo: stockRepo, TelegramClient: telegramClient}
+	instagramService := &service.InstagramServiceImpl{InstagramAccountRepo: instagramAccountRepo, InstagramClient: instagramClient, TelegramClient: telegramClient}
 
 	return MainServices{
-		WarmupDBService: warmupDBService,
-		BirthdayService: birthdayService,
-		WalletService:   walletService,
-		NewsService:     newsService,
-		StockService:    stockService,
+		WarmupDBService:  warmupDBService,
+		BirthdayService:  birthdayService,
+		WalletService:    walletService,
+		NewsService:      newsService,
+		StockService:     stockService,
+		InstagramService: instagramService,
 	}, db
 
 }
