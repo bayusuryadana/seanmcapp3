@@ -2,7 +2,6 @@ package repository
 
 import (
 	"database/sql"
-	"log"
 )
 
 type People struct {
@@ -23,7 +22,6 @@ type PeopleRepoImpl struct {
 func (r *PeopleRepoImpl) Get(day, month int) ([]People, error) {
 	rows, err := r.DB.Query("SELECT id, name, day, month FROM people WHERE day = $1 AND month = $2", day, month)
 	if err != nil {
-		log.Println("failed to fetch People repo", err)
 		return nil, err
 	}
 	defer rows.Close()

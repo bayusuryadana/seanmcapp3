@@ -16,13 +16,22 @@ type TelegramClient interface {
 type TelegramClientImpl struct {
 	Endpoint string
 	Botname  string
+	client   *http.Client
+}
+
+func NewTelegramClient(endpoint, botname string) *TelegramClientImpl {
+	return &TelegramClientImpl{
+		Endpoint: endpoint,
+		Botname:  botname,
+		client:   newHTTPClient(),
+	}
 }
 
 func (t *TelegramClientImpl) SendMessage(chatId int64, text string) (TelegramResponse, error) {
 	sanitized := url.QueryEscape(text)
 	reqURL := fmt.Sprintf("%s/sendmessage?chat_id=%d&text=%s&parse_mode=markdown&disable_web_page_preview=true&disable_notification=true", t.Endpoint, chatId, sanitized)
 
-	resp, err := http.Get(reqURL)
+	resp, err := t.client.Get(reqURL)
 	if err != nil {
 		log.Println("Failed to send telegram message", err)
 		return TelegramResponse{}, err
@@ -42,7 +51,7 @@ func (t *TelegramClientImpl) SendPhoto(chatId int64, photoURL, caption string) (
 	sanitized := url.QueryEscape(caption)
 	reqURL := fmt.Sprintf("%s/sendphoto?chat_id=%d&photo=%s&caption=%s&parse_mode=markdown&disable_notification=true", t.Endpoint, chatId, url.QueryEscape(photoURL), sanitized)
 
-	resp, err := http.Get(reqURL)
+	resp, err := t.client.Get(reqURL)
 	if err != nil {
 		log.Println("Failed to send telegram photo", err)
 		return TelegramResponse{}, err

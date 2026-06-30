@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"seanmcapp/external"
 	"strings"
+	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -19,51 +20,36 @@ type NewsService interface {
 type NewsServiceImpl struct {
 	TelegramClient external.TelegramClient
 	GroupChatID    int64
+	httpClient     *http.Client
+	sources        []NewsObject
+}
+
+func NewNewsService(telegramClient external.TelegramClient, groupChatID int64) *NewsServiceImpl {
+	return &NewsServiceImpl{
+		TelegramClient: telegramClient,
+		GroupChatID:    groupChatID,
+		httpClient:     &http.Client{Timeout: 15 * time.Second},
+		sources: []NewsObject{
+			Detik{},
+			Tirtol{},
+			Kumparan{},
+			CNA{},
+			Mothership{},
+			Reuters{},
+		},
+	}
 }
 
 func (s *NewsServiceImpl) Run() {
-	newsList := []NewsObject{
-		Detik{},
-		Tirtol{},
-		Kumparan{},
-		CNA{},
-		Mothership{},
-		Reuters{},
-	}
-
 	var results []NewsResult
 
-	for _, news := range newsList {
-		resp, err := http.Get(news.URL())
+	for _, news := range s.sources {
+		result, err := s.fetchNews(news)
 		if err != nil {
-			log.Printf("[ERROR] fetching %s: %v\n", news.Name(), err)
+			log.Printf("[ERROR] %s: %v\n", news.Name(), err)
 			continue
 		}
-		defer resp.Body.Close()
-
-		body, err := io.ReadAll(resp.Body)
-		if err != nil {
-			log.Printf("[ERROR] reading response: %v\n", err)
-			continue
-		}
-
-		doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(body)))
-		if err != nil {
-			log.Printf("[ERROR] parsing document: %v\n", err)
-			continue
-		}
-
-		title, url, err := news.Parse(doc)
-		if err != nil {
-			log.Printf("[ERROR] parsing news from %s: %v\n", news.Name(), err)
-			continue
-		}
-
-		results = append(results, NewsResult{
-			Title:      title,
-			URL:        url,
-			NewsSource: news,
-		})
+		results = append(results, result)
 	}
 
 	message := "Awali harimu dengan berita 📰 dari **Seanmctoday** by @seanmcbot\n\n"
@@ -76,6 +62,34 @@ func (s *NewsServiceImpl) Run() {
 	}
 
 	s.TelegramClient.SendMessage(s.GroupChatID, message)
+}
+
+// fetchNews retrieves and parses a single news source. Keeping it a method
+// scopes resp.Body.Close() to one fetch (no leaked bodies) and lets it reuse
+// the service's shared, timeout-bounded HTTP client.
+func (s *NewsServiceImpl) fetchNews(news NewsObject) (NewsResult, error) {
+	resp, err := s.httpClient.Get(news.URL())
+	if err != nil {
+		return NewsResult{}, fmt.Errorf("fetching: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return NewsResult{}, fmt.Errorf("reading response: %w", err)
+	}
+
+	doc, err := goquery.NewDocumentFromReader(strings.NewReader(string(body)))
+	if err != nil {
+		return NewsResult{}, fmt.Errorf("parsing document: %w", err)
+	}
+
+	title, url, err := news.Parse(doc)
+	if err != nil {
+		return NewsResult{}, fmt.Errorf("parsing news: %w", err)
+	}
+
+	return NewsResult{Title: title, URL: url, NewsSource: news}, nil
 }
 
 type NewsObject interface {

@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/cookiejar"
-	"time"
 )
 
 const (
@@ -28,7 +27,7 @@ func NewInstagramClient(sessionID, csrfToken string) *InstagramClientImpl {
 	return &InstagramClientImpl{
 		SessionID: sessionID,
 		CSRFToken: csrfToken,
-		client:    &http.Client{Timeout: 15 * time.Second, Jar: jar},
+		client:    &http.Client{Timeout: httpTimeout, Jar: jar},
 	}
 }
 

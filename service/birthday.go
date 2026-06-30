@@ -28,7 +28,7 @@ func (b *BirthdayServiceImpl) Run() {
 	tomorrow := b.sendForDay(tmr.Day(), int(tmr.Month()), 1)
 	nextWeekPpl := b.sendForDay(nextWeek.Day(), int(nextWeek.Month()), 7)
 
-	fmt.Println(strconv.Itoa(today+tomorrow+nextWeekPpl) + " people has birthday today")
+	log.Println("[INFO] " + strconv.Itoa(today+tomorrow+nextWeekPpl) + " people has birthday today")
 }
 
 func (b *BirthdayServiceImpl) sendForDay(day, month, numOfDays int) int {

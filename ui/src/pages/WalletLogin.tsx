@@ -17,16 +17,14 @@ export const WalletLogin = () => {
     const data = new FormData(event.currentTarget);
     const inputPassword = data.get('password')?.toString() ?? ""
 
-    axios.get(API_URL + '/api/wallet/login/' + inputPassword)
+    axios.post(API_URL + '/api/wallet/login', { password: inputPassword })
     .then((response) => {
       setAlert({ display: 'none', text: '' })
       saveToken(response.data)
     })
     .catch((error) => {
       console.log(error);
-      if (error.response && error.response.status == 404) {
-        setAlert({ display: 'true', text: 'Anjing gak nyambung!'})
-      } else if (error.response.status == 403 || error.response.status == 401) {
+      if (error.response && (error.response.status == 401 || error.response.status == 403)) {
         setAlert({ display: 'true', text: 'Salah password goblok!'})
       } else {
         setAlert({ display: 'true', text: 'Gatau nih gabisanya kenapa tot!'})

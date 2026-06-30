@@ -105,11 +105,15 @@ func (s *StockServiceImpl) RefreshPrices() ([]DashboardStock, error) {
 
 func (s *StockServiceImpl) GetAll() ([]DashboardStock, error) {
 	stocks, err := s.StockRepo.GetAll()
+	if err != nil {
+		log.Printf("[ERROR] cannot retrieve stocks: %v\n", err)
+		return nil, err
+	}
 	var dashboardStocks []DashboardStock
 	for _, st := range stocks {
 		dashboardStocks = append(dashboardStocks, DashboardStock(st))
 	}
-	return dashboardStocks, err
+	return dashboardStocks, nil
 }
 
 func (s *StockServiceImpl) Create(stock DashboardStock) (string, error) {
@@ -117,7 +121,11 @@ func (s *StockServiceImpl) Create(stock DashboardStock) (string, error) {
 		return "", errors.New("best_price and fair_price are required and must be > 0")
 	}
 	st := repository.Stock(stock)
-	return s.StockRepo.Create(st)
+	name, err := s.StockRepo.Create(st)
+	if err != nil {
+		log.Printf("[ERROR] cannot create stock: %v\n", err)
+	}
+	return name, err
 }
 
 func (s *StockServiceImpl) Update(stock DashboardStock) (string, error) {
@@ -125,11 +133,19 @@ func (s *StockServiceImpl) Update(stock DashboardStock) (string, error) {
 		return "", errors.New("best_price and fair_price are required and must be > 0")
 	}
 	st := repository.Stock(stock)
-	return s.StockRepo.Update(st)
+	name, err := s.StockRepo.Update(st)
+	if err != nil {
+		log.Printf("[ERROR] cannot update stock: %v\n", err)
+	}
+	return name, err
 }
 
 func (s *StockServiceImpl) Delete(name string) (string, error) {
-	return s.StockRepo.Delete(name)
+	deletedName, err := s.StockRepo.Delete(name)
+	if err != nil {
+		log.Printf("[ERROR] cannot delete stock: %v\n", err)
+	}
+	return deletedName, err
 }
 
 type DashboardStock struct {

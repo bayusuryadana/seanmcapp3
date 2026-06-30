@@ -5,7 +5,6 @@ import (
 	"log"
 	"seanmcapp/external"
 	"seanmcapp/repository"
-	"seanmcapp/util"
 	"strings"
 	"time"
 
@@ -27,6 +26,7 @@ type InstagramServiceImpl struct {
 	InstagramAccountRepo repository.InstagramAccountRepo
 	InstagramClient      external.InstagramClient
 	TelegramClient       external.TelegramClient
+	PersonalChatID       int64
 }
 
 type igPost struct {
@@ -102,7 +102,7 @@ func (s *InstagramServiceImpl) fetchLatestPosts(username string) ([]igPost, erro
 		if shortcode != "" {
 			posts = append(posts, igPost{Shortcode: shortcode, DisplayURL: imageURL})
 		}
-		return len(posts) < igMaxPosts
+		return true
 	})
 
 	return posts, nil
@@ -128,11 +128,9 @@ func detectNewPosts(storedRaw string, current []igPost) []igPost {
 }
 
 func (s *InstagramServiceImpl) notify(username string, newPosts []igPost) {
-	personalChatID := util.GetAppSettings().TelegramSettings.PersonalChatID
-
 	for _, p := range newPosts {
 		caption := fmt.Sprintf("📸 New post from *%s*\n🔗 %s%s/", username, igPostBase, p.Shortcode)
-		if _, err := s.TelegramClient.SendPhoto(personalChatID, p.DisplayURL, caption); err != nil {
+		if _, err := s.TelegramClient.SendPhoto(s.PersonalChatID, p.DisplayURL, caption); err != nil {
 			log.Printf("[ERROR] sending photo for %s/%s: %v", username, p.Shortcode, err)
 		}
 		time.Sleep(1 * time.Second)

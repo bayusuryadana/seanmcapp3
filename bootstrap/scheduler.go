@@ -1,7 +1,6 @@
 package bootstrap
 
 import (
-	"fmt"
 	"log"
 	"time"
 
@@ -13,8 +12,6 @@ func InitScheduler(mainServices MainServices) {
 	c := cron.New(cron.WithSeconds(), cron.WithLocation(loc))
 
 	schedulers := []*Scheduler{
-		{Task: mainServices.WarmupDBService, CronExpr: "0 * * * * *", Repeat: false},
-		{Task: mainServices.WarmupDBService, CronExpr: "*/5 * * * * *", Repeat: false},
 		{Task: mainServices.BirthdayService, CronExpr: "0 0 8 * * *", Repeat: true},
 		{Task: mainServices.NewsService, CronExpr: "0 0 9 * * *", Repeat: true},
 		{Task: mainServices.StockService, CronExpr: "0 0 19 * * *", Repeat: true},
@@ -28,7 +25,7 @@ func InitScheduler(mainServices MainServices) {
 		}
 	}
 
-	fmt.Println("Running scheduled jobs...")
+	log.Println("Running scheduled jobs...")
 	c.Start()
 }
 

@@ -142,6 +142,8 @@ func getAppSettings() AppsSettings {
 	}
 }
 
+const walletSubject = "wallet-user"
+
 func JwtCreateToken(walletSettings WalletSettings, userPassword string) string {
 
 	if userPassword != walletSettings.Password {
@@ -149,7 +151,7 @@ func JwtCreateToken(walletSettings WalletSettings, userPassword string) string {
 	}
 
 	claims := jwt.RegisteredClaims{
-		Subject:   userPassword,
+		Subject:   walletSubject,
 		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Hour)),
 		IssuedAt:  jwt.NewNumericDate(time.Now()),
 	}
@@ -165,16 +167,21 @@ func JwtCreateToken(walletSettings WalletSettings, userPassword string) string {
 func JwtValidateToken(walletSettings WalletSettings, token string) bool {
 	trimmed := strings.TrimPrefix(token, "Bearer ")
 
-	parsedToken, err := jwt.ParseWithClaims(trimmed, &jwt.RegisteredClaims{}, func(t *jwt.Token) (interface{}, error) {
-		return []byte(walletSettings.SecretKey), nil
-	})
+	parsedToken, err := jwt.ParseWithClaims(
+		trimmed,
+		&jwt.RegisteredClaims{},
+		func(t *jwt.Token) (interface{}, error) {
+			return []byte(walletSettings.SecretKey), nil
+		},
+		jwt.WithValidMethods([]string{"HS256"}), // pin the algorithm; reject anything else
+	)
 
 	if err != nil {
 		return false
 	}
 
 	if claims, ok := parsedToken.Claims.(*jwt.RegisteredClaims); ok && parsedToken.Valid {
-		return claims.Subject == walletSettings.Password
+		return claims.Subject == walletSubject
 	}
 
 	return false

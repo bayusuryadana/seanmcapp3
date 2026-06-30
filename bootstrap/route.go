@@ -1,8 +1,6 @@
 package bootstrap
 
 import (
-	"io"
-	"log"
 	"net/http"
 	"os"
 	"seanmcapp/util"
@@ -13,7 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func InitRouter(mainServices MainServices, walletSettings util.WalletSettings) {
+func InitRouter(mainServices MainServices, walletSettings util.WalletSettings) *gin.Engine {
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173", "http://localhost:8080", "https://seanmcapp.herokuapp.com"},
@@ -33,20 +31,20 @@ func InitRouter(mainServices MainServices, walletSettings util.WalletSettings) {
 	api := r.Group("/api")
 	{
 		api.POST("/webhook", func(c *gin.Context) {
-			body, _ := io.ReadAll(c.Request.Body)
-			result := telegramWebhookServiceReceive(string(body))
-			c.JSON(http.StatusOK, result)
+			c.JSON(http.StatusOK, gin.H{"status": "ok"})
 		})
 
 		wallet := api.Group("/wallet")
 		{
-			wallet.GET("/login/", func(c *gin.Context) {
-				c.String(http.StatusUnauthorized, "Invalid password")
-			})
-
-			wallet.GET("/login/:password", func(c *gin.Context) {
-				userPassword := c.Param("password")
-				token := util.JwtCreateToken(walletSettings, userPassword)
+			wallet.POST("/login", func(c *gin.Context) {
+				var body struct {
+					Password string `json:"password"`
+				}
+				if err := c.ShouldBindJSON(&body); err != nil {
+					c.String(http.StatusBadRequest, "Invalid request")
+					return
+				}
+				token := util.JwtCreateToken(walletSettings, body.Password)
 				if token == "" {
 					c.String(http.StatusUnauthorized, "Invalid password")
 				} else {
@@ -103,14 +101,7 @@ func InitRouter(mainServices MainServices, walletSettings util.WalletSettings) {
 		}
 	}
 
-	port := os.Getenv("PORT")
-	if port == "" {
-		port = "8080" // fallback for local dev
-	}
-
-	if err := r.Run(":" + port); err != nil {
-		log.Fatal(err)
-	}
+	return r
 }
 
 // Auth Middleware
@@ -159,8 +150,4 @@ func handleJSON[Req any, Res any](fn func(Req) (Res, error)) gin.HandlerFunc {
 		res, err := fn(payload)
 		resolve(c, res, err)
 	}
-}
-
-func telegramWebhookServiceReceive(payload string) any {
-	return gin.H{"status": "received", "payload": payload}
 }
