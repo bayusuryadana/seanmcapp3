@@ -16,7 +16,6 @@ func InitScheduler(mainServices MainServices) *cron.Cron {
 	)
 
 	schedulers := []*Scheduler{
-		{Task: mainServices.BirthdayService, CronExpr: "0 0 8 * * *", Repeat: true},
 		{Task: mainServices.NewsService, CronExpr: "0 0 9 * * *", Repeat: true},
 		{Task: mainServices.StockService, CronExpr: "0 0 19 * * *", Repeat: true},
 		{Task: mainServices.InstagramService, CronExpr: "0 0 10 * * *", Repeat: true},
