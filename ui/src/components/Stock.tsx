@@ -10,7 +10,7 @@ interface StockProps {
     title: string
     rows: WalletStock[]
     editHandler: (row: WalletStock) => void
-    deleteHandler: (name: string) => void
+    deleteHandler: (row: WalletStock) => void
     createHandler: () => void
     showOwnedColumns?: boolean
 }
@@ -88,7 +88,7 @@ export const Stock = (props: StockProps) => {
                                     <IconButton size="small" sx={{ p: 0.25 }} aria-label="edit" color="primary" onClick={()=>props.editHandler(row)}>
                                         <EditIcon fontSize="small" />
                                     </IconButton>
-                                    <IconButton size="small" sx={{ p: 0.25 }} aria-label="delete" color="secondary" onClick={()=>props.deleteHandler(row.name)}>
+                                    <IconButton size="small" sx={{ p: 0.25 }} aria-label="delete" color="secondary" onClick={()=>props.deleteHandler(row)}>
                                         <DeleteIcon fontSize="small" />
                                     </IconButton>
                                 </TableCell>

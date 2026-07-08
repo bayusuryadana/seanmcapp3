@@ -1,4 +1,5 @@
 import { ReactNode, useState, FC, createContext, useEffect } from "react";
+import { setUnauthorizedHandler } from "./utils/api";
 
 interface Props {
     children: ReactNode
@@ -37,6 +38,12 @@ export const UserProvider: FC<Props> = ({ children }) => {
             localStorage.removeItem("tokenExpiry");
         }
     };
+
+    // Let the shared axios instance log the user out on a 401 response.
+    useEffect(() => {
+        setUnauthorizedHandler(() => saveToken(null));
+        return () => setUnauthorizedHandler(null);
+    }, []);
 
     return (
         <UserContext.Provider value={{ userContext, saveToken }}>

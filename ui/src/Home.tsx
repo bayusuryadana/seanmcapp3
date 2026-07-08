@@ -10,15 +10,9 @@ export const Home = () => {
       <div id="home-container">
         <Container maxWidth="sm">
           <h1>SEANMCAPP</h1>
-          <Grid container spacing={3}>
+          <Grid container spacing={3} justifyContent="center">
             <Grid item xs={3}>
-              <Button variant="text"></Button>
-            </Grid>
-            <Grid item xs={3}>
-              <Button variant="outlined" onClick={() => navigate('/wallet')}>Wallet</Button>
-            </Grid>
-            <Grid item xs={3}>
-              <Button variant="text"></Button>
+              <Button variant="outlined" fullWidth onClick={() => navigate('/wallet')}>Wallet</Button>
             </Grid>
           </Grid>
         </Container>
