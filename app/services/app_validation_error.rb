@@ -1,0 +1,2 @@
+class AppValidationError < StandardError
+end

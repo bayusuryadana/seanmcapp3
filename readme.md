@@ -18,10 +18,11 @@ Port application from [seanmcapp](https://github.com/bayusuryadana/seanmcapp)
 - twitter (logged in) 
 
 ## Setup
-1. Install Go
-2. Install Node + Yarn
-3. run backend `go run .`
-4. run frontend `yarn dev-local`
+1. Install Ruby 2.6.10, Bundler, Node, and Yarn
+2. Install backend dependencies with `bundle install`
+3. Install frontend dependencies with `cd ui && yarn install`
+4. Run backend with `bundle exec rails server`
+5. Run frontend with `cd ui && yarn dev-local`
 
 ## Contact
 feel free to contact me at bayusuryadana@gmail.com  
