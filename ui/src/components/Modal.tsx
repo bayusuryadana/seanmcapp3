@@ -157,7 +157,7 @@ export const WalletModal = (props: WalletModalProps) => {
       onClose={props.onClose}
       onSubmit={handleSubmit}
     >
-      {isDelete || renderForm()}
+      {isDelete ? <AppAlert alert={alert} sx={{ mb: 1 }} /> : renderForm()}
     </FormModal>
   );
 }

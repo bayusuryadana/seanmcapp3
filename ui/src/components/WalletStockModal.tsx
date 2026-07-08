@@ -206,7 +206,10 @@ export const WalletStockModal = (props: Props) => {
       onSubmit={handleSubmit}
     >
       {isDelete ? (
-        <Alert severity="warning">Are you sure you want to delete <b>{props.stock?.name}</b>?</Alert>
+        <>
+          <AppAlert alert={alert} sx={{ mb: 1 }} />
+          <Alert severity="warning">Are you sure you want to delete <b>{props.stock?.name}</b>?</Alert>
+        </>
       ) : renderForm()}
     </FormModal>
   );

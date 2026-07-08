@@ -106,3 +106,27 @@ func TestInstagramRun(t *testing.T) {
 	assert.Empty(t, tg.photos)
 	assert.Equal(t, "AAA,BBB", accountRepo.updatedShortcodes["foo"])
 }
+
+func TestInstagramRunSendsNewPosts(t *testing.T) {
+	accountRepo := &fakeInstagramRepo{getAllFn: func() ([]repository.InstagramAccount, error) {
+		return []repository.InstagramAccount{{Username: "foo", LastShortcodes: "AAA"}}, nil
+	}}
+	// Feed returns AAA + BBB, only AAA is known -> BBB is a new post -> notify.
+	client := &fakeInstagramClient{getFn: func(url string) ([]byte, error) {
+		if strings.Contains(url, "web_profile_info") {
+			return []byte(igProfileJSON), nil
+		}
+		return []byte(igFeedJSON), nil
+	}}
+	tg := &fakeTelegramClient{}
+	svc := &InstagramServiceImpl{InstagramAccountRepo: accountRepo, InstagramClient: client, TelegramClient: tg, PersonalChatID: 42}
+
+	svc.Run()
+
+	require.Len(t, tg.photos, 1)
+	assert.Equal(t, int64(42), tg.photos[0].chatID)
+	assert.Equal(t, "http://img/b", tg.photos[0].url)
+	assert.Contains(t, tg.photos[0].caption, "foo")
+	assert.Equal(t, "AAA,BBB", accountRepo.updatedShortcodes["foo"])
+}
+

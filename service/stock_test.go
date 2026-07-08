@@ -122,3 +122,34 @@ func TestStockRunNoAlerts(t *testing.T) {
 	svc.Run()
 	assert.Empty(t, tg.messages)
 }
+
+func TestStockRefreshPricesErrors(t *testing.T) {
+	t.Run("GetAll error propagates", func(t *testing.T) {
+		repo := &fakeStockRepo{getAllFn: func() ([]repository.Stock, error) { return nil, errors.New("db") }}
+		svc := &StockServiceImpl{StockRepo: repo, StockClient: &fakeStockClient{}}
+		_, err := svc.RefreshPrices()
+		assert.Error(t, err)
+	})
+
+	t.Run("client price error is skipped, still returns stocks", func(t *testing.T) {
+		stocks := []repository.Stock{{Name: "BBCA", BestPrice: 100, FairPrice: 200}}
+		repo := &fakeStockRepo{getAllFn: func() ([]repository.Stock, error) { return stocks, nil }}
+		client := &fakeStockClient{err: errors.New("fetch failed")}
+		svc := &StockServiceImpl{StockRepo: repo, StockClient: client}
+
+		got, err := svc.RefreshPrices()
+		require.NoError(t, err)
+		assert.Len(t, got, 1)
+		assert.Empty(t, repo.updated) // update skipped because price fetch failed
+	})
+}
+
+func TestStockRunGetAllError(t *testing.T) {
+	repo := &fakeStockRepo{getAllFn: func() ([]repository.Stock, error) { return nil, errors.New("db") }}
+	tg := &fakeTelegramClient{}
+	svc := &StockServiceImpl{StockRepo: repo, StockClient: &fakeStockClient{}, TelegramClient: tg}
+
+	svc.Run() // should return early without panicking
+	assert.Empty(t, tg.messages)
+}
+

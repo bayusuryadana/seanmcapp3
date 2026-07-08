@@ -56,3 +56,23 @@ func TestTelegramRequestError(t *testing.T) {
 	_, err := c.SendMessage(5, "hello")
 	assert.Error(t, err)
 }
+
+func TestTelegramSendPhotoErrors(t *testing.T) {
+	t.Run("decode error", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`not-json`))
+		}))
+		defer srv.Close()
+		_, err := NewTelegramClient(srv.URL, "bot").SendPhoto(5, "http://img", "cap")
+		assert.Error(t, err)
+	})
+
+	t.Run("request error", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+		url := srv.URL
+		srv.Close()
+		_, err := NewTelegramClient(url, "bot").SendPhoto(5, "http://img", "cap")
+		assert.Error(t, err)
+	})
+}
+

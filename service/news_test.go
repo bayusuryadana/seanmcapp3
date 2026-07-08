@@ -114,6 +114,13 @@ func (f fakeNewsSource) Parse(doc *goquery.Document) (string, string, error) {
 	return f.parseFn(doc)
 }
 
+func TestNewNewsService(t *testing.T) {
+	svc := NewNewsService(&fakeTelegramClient{}, 123)
+	require.NotNil(t, svc)
+	assert.Equal(t, int64(123), svc.GroupChatID)
+	assert.Len(t, svc.sources, 6) // Detik, Tirtol, Kumparan, CNA, Mothership, Reuters
+}
+
 func TestNewsRun(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`<html><body><h1>hi</h1></body></html>`))

@@ -8,7 +8,7 @@ on:
 
 jobs:
   backend:
-    name: Backend build & test
+    name: Backend build & test (>=90% coverage)
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,5 +30,37 @@ jobs:
         run: go vet ./...
 
       - name: Test (race + coverage)
-        run: go test -race -cover ./...
+        run: go test -race -coverprofile=coverage.out ./...
+
+      - name: Coverage gate (excludes wiring/config)
+        env:
+          COVERAGE_THRESHOLD: 90
+        run: node .github/scripts/backend-coverage.mjs
+
+  frontend:
+    name: Frontend build & test (>=90% coverage)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ui
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: yarn
+          cache-dependency-path: ui/yarn.lock
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Test (coverage gate via jest coverageThreshold)
+        run: yarn test --ci --coverage
+
+      - name: Build
+        run: yarn build
+
 
