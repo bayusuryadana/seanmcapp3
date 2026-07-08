@@ -1,58 +1,46 @@
-import { Container, Alert, Grid, Paper, Typography, LinearProgress } from "@mui/material"
-import Chart from "../components/Chart.tsx"
+import { Container, Grid, Paper, Typography, LinearProgress } from "@mui/material"
+import { Chart } from "../components/Chart.tsx"
 import { Detail } from "../components/Detail.tsx"
 import { Title } from "../components/Title.tsx"
-import {WalletPlanned, WalletDetail, WalletDashboardData, WalletAlert} from "../utils/model.ts"
+import { AppAlert } from "../components/AppAlert.tsx"
+import { WalletPlanned, WalletDetail, WalletDashboardData } from "../utils/model.ts"
 import { WalletModal } from "../components/Modal.tsx"
-import axios from "axios"
-import { useContext, useEffect, useState } from "react"
-import { UserContext, UserContextType } from "../UserContext.tsx"
-import { API_URL } from "../utils/constant.ts"
+import { api } from "../utils/api.ts"
+import { useEffect, useState } from "react"
+import { dashboardPaperStyle } from "../utils/constant.ts"
+import { currentYearMonth } from "../utils/date.ts"
+import { useAlert } from "../hooks/useAlert.ts"
+import { useModal } from "../hooks/useModal.ts"
 
 export const WalletDashboard = () => {
 
-  const { userContext, saveToken } = useContext(UserContext) as UserContextType
-  const [alert, setAlert] = useState<WalletAlert>({display: 'none', text: ''})
+  const { alert, showError, clearAlert } = useAlert()
+  const { modal, openCreate, openEdit, openDelete, close } = useModal<WalletDetail>()
   const [data, setData] = useState<WalletDashboardData|null>(null);
-  const [walletDetail, setWalletDetail] = useState<WalletDetail|null>(null)
   const [date, setDate] = useState('')
 
   const onSuccess = () => {
-    setWalletDetail(null)
+    close()
     if (date !== '') {
       getWalletDashboard(date)
     }
   }
 
   const getWalletDashboard = (dateParam: string) => {
-    axios.get(API_URL + '/api/wallet/dashboard', {
-      headers: {
-        Authorization: 'Bearer ' + (userContext ?? "")
-      },
-      params: {
-        date: dateParam
-      },
-    })
+    api.get('/api/wallet/dashboard', { params: { date: dateParam } })
     .then((response) => {
-      setAlert({display: 'none', text: ''})
+      clearAlert()
       setData(response.data.data)
       setDate(dateParam)
     })
-    .catch((error) => {
-      console.log(error)
-      if (axios.isAxiosError(error) && error.response?.status == 401) {
-        saveToken(null)
-      } else {
-        setAlert({display: 'true', text: 'Data failed to fetch/parse!'})
-      }
-    })
+    .catch(() => showError('Data failed to fetch/parse!'))
   }
 
   useEffect(() => {
-    const newDate = new Date()
-    const dateString = newDate.getFullYear().toString() + ('0' + (newDate.getMonth() + 1).toString()).slice(-2)
+    const dateString = currentYearMonth()
     setDate(dateString)
     getWalletDashboard(dateString)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const totalAllocations = data?.allocations.reduce((acc, item) => {
@@ -64,35 +52,35 @@ export const WalletDashboard = () => {
   return (
     <>
       <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-        <Alert id="invalid-data-alert" severity="error" sx={{ mb: 2, display: alert.display}}>{alert.text}</Alert>
+        <AppAlert alert={alert} sx={{ mb: 2 }} />
         <Grid container spacing={3}>
           {/* Saving accounts */}
           <Grid item xs={12} md={4}>
-            <Paper sx={{p: 2, display: 'flex', flexDirection: 'column', height: 200, alignItems: 'center', }}>
+            <Paper sx={{ ...dashboardPaperStyle, height: 200, alignItems: 'center' }}>
               <Title>Current Savings</Title>
               <Typography color="text.secondary">
                 on DBS account
               </Typography>
               <Typography variant="h6">
-                S$ {data?.savings?.dbs ? data?.savings.dbs.toLocaleString() : 'Loading...'}
+                S$ {data ? data.savings.dbs.toLocaleString() : 'Loading...'}
               </Typography>
               <Typography color="text.secondary">
                 on BCA account
               </Typography>
               <Typography variant="h6">
-                Rp. {data?.savings?.bca ? data?.savings.bca.toLocaleString() : 'Loading...'}
+                Rp. {data ? data.savings.bca.toLocaleString() : 'Loading...'}
               </Typography>
             </Paper>
           </Grid>
           {/* Balance */}
           <Grid item xs={12} md={8}>
-            <Paper sx={{p: 2, display: 'flex', flexDirection: 'column', height: 200, }}>
+            <Paper sx={{ ...dashboardPaperStyle, height: 200 }}>
                 { data?.chart?.balance ? <Chart data={data?.chart.balance} /> : <Typography variant="body2">Loading...</Typography> }
             </Paper>
           </Grid>
           {/* Allocation */}
           <Grid item xs={12} md={4}>
-            <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', px: 3 }}>
+            <Paper sx={{ ...dashboardPaperStyle, alignItems: 'center', px: 3 }}>
               <Title sx={{ mb: 0 }}>Allocations</Title>
               <Typography sx={{ mb: 2 }}>
                 ( {totalAllocations?.expense.toLocaleString()} / {totalAllocations?.alloc.toLocaleString()} )
@@ -141,15 +129,15 @@ export const WalletDashboard = () => {
           </Grid>
           {/* Data */}
           <Grid item xs={12} md={8}>
-            <Paper sx={{ p: 2, display: 'flex', flexDirection: 'column' }}>
-              <Detail 
+            <Paper sx={dashboardPaperStyle}>
+              <Detail
                 date={date}
                 rows={data?.detail ?? []} 
                 planned={data?.planned ?? { sgd: 0, idr: 0} as WalletPlanned}
                 updateDashboard={getWalletDashboard}
-                createHandler={() => {setWalletDetail({ id: -1 } as WalletDetail)}}
-                editHandler={(walletDetail: WalletDetail) => {setWalletDetail(walletDetail)}} 
-                deleteHandler={(id: number) => {setWalletDetail({ id: id } as WalletDetail)}}
+                createHandler={() => openCreate()}
+                editHandler={openEdit}
+                deleteHandler={openDelete}
               />
             </Paper>
           </Grid>
@@ -157,10 +145,11 @@ export const WalletDashboard = () => {
       </Container>
       
       <WalletModal 
-        onClose={() => setWalletDetail(null)}
+        mode={modal?.mode ?? null}
+        detail={modal?.item ?? null}
         date={date}
+        onClose={close}
         onSuccess={onSuccess}
-        walletDetail={walletDetail}
       />
     </>
   )

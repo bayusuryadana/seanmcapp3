@@ -1,37 +1,40 @@
-import { API_URL, defaultTheme } from "../utils/constant.ts"
+import { defaultTheme, mainContentBoxStyle } from "../utils/constant.ts"
 import CssBaseline from '@mui/material/CssBaseline';
 import { AppBar } from '../components/AppBar.tsx';
+import { AppAlert } from '../components/AppAlert.tsx';
 import LockOutlinedIcon from '@mui/icons-material/LockOutlined';
-import { useContext, useState, FormEvent } from 'react';
+import { FormEvent } from 'react';
 import { Navigate } from "react-router-dom";
+import { api } from "../utils/api.ts";
 import axios from "axios";
-import { Alert, Paper, Avatar, Button, ThemeProvider, Box, Toolbar, Typography, TextField } from "@mui/material";
-import { UserContext, UserContextType } from "../UserContext.tsx";
+import { Paper, Avatar, Button, ThemeProvider, Box, Toolbar, Typography, TextField } from "@mui/material";
+import { useUser } from "../hooks/useUser.ts";
+import { useAlert } from "../hooks/useAlert.ts";
 
 export const WalletLogin = () => {
-  const  { userContext, saveToken } = useContext(UserContext) as UserContextType;
-  const [alert, setAlert] = useState({display: 'none', text:''})
+  const { userContext, saveToken } = useUser();
+  const { alert, showError, clearAlert } = useAlert()
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const data = new FormData(event.currentTarget);
     const inputPassword = data.get('password')?.toString() ?? ""
 
-    axios.post(API_URL + '/api/wallet/login', { password: inputPassword })
+    api.post('/api/wallet/login', { password: inputPassword })
     .then((response) => {
-      setAlert({ display: 'none', text: '' })
+      clearAlert()
       saveToken(response.data)
     })
     .catch((error) => {
-      console.log(error);
-      if (error.response && (error.response.status == 401 || error.response.status == 403)) {
-        setAlert({ display: 'true', text: 'Salah password goblok!'})
+      const status = axios.isAxiosError(error) ? error.response?.status : undefined
+      if (status === 401 || status === 403) {
+        showError('Salah password goblok!')
       } else {
-        setAlert({ display: 'true', text: 'Gatau nih gabisanya kenapa tot!'})
+        showError('Gatau nih gabisanya kenapa tot!')
       }
     });
   };
-  
+
   if (userContext == null) {
     return (
       <ThemeProvider theme={defaultTheme}>
@@ -46,13 +49,7 @@ export const WalletLogin = () => {
           </AppBar>
 
           <Box component="main" sx={{
-              backgroundColor: (theme) =>
-                theme.palette.mode === 'light'
-                  ? theme.palette.grey[100]
-                  : theme.palette.grey[900],
-              flexGrow: 1,
-              height: '100vh',
-              overflow: 'auto',
+              ...mainContentBoxStyle,
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
@@ -67,7 +64,7 @@ export const WalletLogin = () => {
                   Sign in
                 </Typography>
                 <Box component="form" onSubmit={handleSubmit} noValidate sx={{ mt: 1 }}>
-                  <Alert id="wrong-password-alert" severity="error" sx={{ display: alert.display}}>{alert.text}</Alert>
+                  <AppAlert alert={alert} />
                   <TextField margin="normal" required fullWidth name="password" label="Password" type="password" id="password" autoComplete="current-password" />
                   <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }}>
                       Sign In

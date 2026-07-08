@@ -9,7 +9,7 @@ interface ChartProps {
   data: WalletChartBalance[]
 }
 
-export default function Chart(props: ChartProps) {
+export function Chart(props: ChartProps) {
 
   const theme = useTheme();
   const isXs = useMediaQuery(theme.breakpoints.only('xs'));

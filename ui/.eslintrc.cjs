@@ -15,4 +15,14 @@ module.exports = {
       { allowConstantExport: true },
     ],
   },
+  overrides: [
+    {
+      files: ['**/*.test.ts', '**/*.test.tsx'],
+      env: { jest: true },
+      rules: {
+        '@typescript-eslint/no-non-null-assertion': 'off',
+        '@typescript-eslint/no-explicit-any': 'off',
+      },
+    },
+  ],
 }

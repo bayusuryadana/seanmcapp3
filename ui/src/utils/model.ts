@@ -51,8 +51,3 @@ export type WalletStock = {
   buy_price?: number;
   lot?: number;
 }
-
-export type WalletAlert = {
-  display: string
-  text: string
-}

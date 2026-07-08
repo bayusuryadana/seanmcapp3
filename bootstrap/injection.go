@@ -15,7 +15,6 @@ import (
 )
 
 type MainServices struct {
-	BirthdayService  service.BirthdayService
 	WalletService    service.WalletService
 	NewsService      service.NewsService
 	StockService     service.StockService
@@ -46,7 +45,6 @@ func GetMainServices(settings util.AppsSettings) (MainServices, *sql.DB) {
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(5 * time.Minute)
 
-	peopleRepo := &repository.PeopleRepoImpl{DB: db}
 	walletRepo := &repository.WalletRepoImpl{DB: db}
 	stockRepo := &repository.StockRepoImpl{DB: db}
 	instagramAccountRepo := &repository.InstagramAccountRepoImpl{DB: db}
@@ -55,14 +53,12 @@ func GetMainServices(settings util.AppsSettings) (MainServices, *sql.DB) {
 	instagramClient := external.NewInstagramClient(settings.IGSettings.SessionID, settings.IGSettings.CSRFToken)
 	stockClient := external.NewStockClient()
 
-	birthdayService := &service.BirthdayServiceImpl{PeopleRepo: peopleRepo, TelegramClient: telegramClient, PersonalChatID: settings.TelegramSettings.PersonalChatID}
 	walletService := &service.WalletServiceImpl{WalletRepo: walletRepo}
 	newsService := service.NewNewsService(telegramClient, settings.TelegramSettings.GroupChatID)
 	stockService := &service.StockServiceImpl{StockRepo: stockRepo, StockClient: stockClient, TelegramClient: telegramClient, PersonalChatID: settings.TelegramSettings.PersonalChatID}
 	instagramService := &service.InstagramServiceImpl{InstagramAccountRepo: instagramAccountRepo, InstagramClient: instagramClient, TelegramClient: telegramClient, PersonalChatID: settings.TelegramSettings.PersonalChatID}
 
 	return MainServices{
-		BirthdayService:  birthdayService,
 		WalletService:    walletService,
 		NewsService:      newsService,
 		StockService:     stockService,
