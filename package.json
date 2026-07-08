@@ -1,7 +1,10 @@
 {
   "name": "ui",
   "private": true,
+  "engines": {
+    "node": "20.x"
+  },
   "scripts": {
-    "heroku-postbuild": "cd ui && yarn install && yarn build"
+    "heroku-postbuild": "cd ui && yarn install --frozen-lockfile && yarn build"
   }
 }

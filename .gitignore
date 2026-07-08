@@ -2,6 +2,9 @@
 .idea
 .vscode
 
+# Node
+node_modules/
+
 # Test coverage output
 coverage.out
 ui/coverage/
