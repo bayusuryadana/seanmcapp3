@@ -1,10 +1,10 @@
-import { Button, Modal, Box, Typography, Alert, TextField, Grid, InputLabel, FormControlLabel, Switch } from "@mui/material";
+import { Alert, TextField, Grid, InputLabel, FormControlLabel, Switch, Typography } from "@mui/material";
 import { useState, FormEvent, useEffect } from "react";
 import { WalletStock } from "../utils/model.ts";
-import { modalStyle } from "../utils/constant.ts";
 import { api } from "../utils/api.ts";
 import { ModalMode, modalTitle } from "../utils/modal.ts";
 import { AppAlert } from "./AppAlert.tsx";
+import { FormModal } from "./FormModal.tsx";
 import { useAlert } from "../hooks/useAlert.ts";
 
 // Stock name must be exactly 4 capital letters (e.g. BBCA)
@@ -198,25 +198,16 @@ export const WalletStockModal = (props: Props) => {
   const isDelete = props.mode === 'delete'
 
   return (
-    <Modal
+    <FormModal
       open={props.mode !== null}
+      title={`${props.mode ? modalTitle[props.mode] : ''} Stock`}
+      submitLabel={isDelete ? 'Delete' : 'Submit'}
       onClose={props.onClose}
-      aria-labelledby="stock-modal-title"
-      aria-describedby="stock-modal-description"
+      onSubmit={handleSubmit}
     >
-      <Box sx={modalStyle}>
-        <Typography id="stock-modal-title" variant="h6" component="h2">
-          {props.mode ? modalTitle[props.mode] : ''} Stock
-        </Typography>
-        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-          {isDelete ? (
-            <Alert severity="warning">Are you sure you want to delete <b>{props.stock?.name}</b>?</Alert>
-          ) : renderForm()}
-          <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }}>
-            {isDelete ? 'Delete' : 'Submit'}
-          </Button>
-        </Box>
-      </Box>
-    </Modal>
+      {isDelete ? (
+        <Alert severity="warning">Are you sure you want to delete <b>{props.stock?.name}</b>?</Alert>
+      ) : renderForm()}
+    </FormModal>
   );
 }

@@ -1,10 +1,10 @@
-import { Button, Modal, Box, Typography, TextField, MenuItem, Select, Grid, InputLabel, FormControlLabel, Checkbox } from "@mui/material";
+import { TextField, MenuItem, Select, Grid, InputLabel, FormControlLabel, Checkbox } from "@mui/material";
 import { useState, FormEvent, useEffect } from "react";
 import { WalletDetail } from "../utils/model.ts";
-import { modalStyle } from "../utils/constant.ts";
 import { api } from "../utils/api.ts";
 import { ModalMode, modalTitle } from "../utils/modal.ts";
 import { AppAlert } from "./AppAlert.tsx";
+import { FormModal } from "./FormModal.tsx";
 import { useAlert } from "../hooks/useAlert.ts";
 
 interface WalletModalProps {
@@ -150,23 +150,14 @@ export const WalletModal = (props: WalletModalProps) => {
   const isDelete = props.mode === 'delete'
 
   return (
-    <Modal
+    <FormModal
       open={props.mode !== null}
+      title={props.mode ? modalTitle[props.mode] : ''}
+      submitLabel={isDelete ? 'Delete' : 'Submit'}
       onClose={props.onClose}
-      aria-labelledby="modal-modal-title"
-      aria-describedby="modal-modal-description"
+      onSubmit={handleSubmit}
     >
-      <Box sx={modalStyle}>
-        <Typography id="modal-modal-title" variant="h6" component="h2">
-          {props.mode ? modalTitle[props.mode] : ''}
-        </Typography>
-        <Box component="form" onSubmit={handleSubmit} sx={{ mt: 2 }}>
-          {isDelete || renderForm()}
-          <Button type="submit" fullWidth variant="contained" sx={{ mt: 3, mb: 2 }}>
-            {isDelete ? 'Delete' : 'Submit'}
-          </Button>
-        </Box>
-      </Box>
-    </Modal>
+      {isDelete || renderForm()}
+    </FormModal>
   );
 }

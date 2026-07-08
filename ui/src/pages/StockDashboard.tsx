@@ -8,15 +8,13 @@ import { Stock } from "../components/Stock.tsx"
 import { WalletStockModal } from "../components/WalletStockModal.tsx"
 import { AppAlert } from "../components/AppAlert.tsx"
 import { useAlert } from "../hooks/useAlert.ts"
-import { ModalMode } from "../utils/modal.ts"
-
-type ModalState = { mode: ModalMode; stock: WalletStock | null }
+import { useModal } from "../hooks/useModal.ts"
 
 export const StockDashboard = () => {
 
   const { alert, showError, clearAlert } = useAlert()
+  const { modal, openCreate, openEdit, openDelete, close } = useModal<WalletStock>()
   const [stocks, setStocks] = useState<WalletStock[]>([])
-  const [modal, setModal] = useState<ModalState | null>(null)
   const [refreshing, setRefreshing] = useState(false)
 
   const getStocks = () => {
@@ -30,6 +28,7 @@ export const StockDashboard = () => {
 
   useEffect(() => {
     getStocks()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const refreshPrices = () => {
@@ -44,7 +43,7 @@ export const StockDashboard = () => {
   }
 
   const onSuccess = () => {
-    setModal(null)
+    close()
     getStocks()
   }
 
@@ -89,9 +88,9 @@ export const StockDashboard = () => {
                 title="Portfolio"
                 rows={portfolio}
                 showOwnedColumns={true}
-                createHandler={() => setModal({ mode: 'create', stock: { name: '', status: true } as WalletStock })}
-                editHandler={(stock: WalletStock) => setModal({ mode: 'edit', stock })}
-                deleteHandler={(stock: WalletStock) => setModal({ mode: 'delete', stock })}
+                createHandler={() => openCreate({ name: '', status: true } as WalletStock)}
+                editHandler={openEdit}
+                deleteHandler={openDelete}
               />
             </Paper>
           </Grid>
@@ -101,9 +100,9 @@ export const StockDashboard = () => {
                 title="Wishlist"
                 rows={wishlist}
                 showOwnedColumns={false}
-                createHandler={() => setModal({ mode: 'create', stock: { name: '', status: false } as WalletStock })}
-                editHandler={(stock: WalletStock) => setModal({ mode: 'edit', stock })}
-                deleteHandler={(stock: WalletStock) => setModal({ mode: 'delete', stock })}
+                createHandler={() => openCreate({ name: '', status: false } as WalletStock)}
+                editHandler={openEdit}
+                deleteHandler={openDelete}
               />
             </Paper>
           </Grid>
@@ -112,8 +111,8 @@ export const StockDashboard = () => {
 
       <WalletStockModal
         mode={modal?.mode ?? null}
-        stock={modal?.stock ?? null}
-        onClose={() => setModal(null)}
+        stock={modal?.item ?? null}
+        onClose={close}
         onSuccess={onSuccess}
       />
     </>

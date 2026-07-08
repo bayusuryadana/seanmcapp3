@@ -10,19 +10,17 @@ import { useEffect, useState } from "react"
 import { dashboardPaperStyle } from "../utils/constant.ts"
 import { currentYearMonth } from "../utils/date.ts"
 import { useAlert } from "../hooks/useAlert.ts"
-import { ModalMode } from "../utils/modal.ts"
-
-type ModalState = { mode: ModalMode; detail: WalletDetail | null }
+import { useModal } from "../hooks/useModal.ts"
 
 export const WalletDashboard = () => {
 
   const { alert, showError, clearAlert } = useAlert()
+  const { modal, openCreate, openEdit, openDelete, close } = useModal<WalletDetail>()
   const [data, setData] = useState<WalletDashboardData|null>(null);
-  const [modal, setModal] = useState<ModalState|null>(null)
   const [date, setDate] = useState('')
 
   const onSuccess = () => {
-    setModal(null)
+    close()
     if (date !== '') {
       getWalletDashboard(date)
     }
@@ -42,6 +40,7 @@ export const WalletDashboard = () => {
     const dateString = currentYearMonth()
     setDate(dateString)
     getWalletDashboard(dateString)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const totalAllocations = data?.allocations.reduce((acc, item) => {
@@ -63,13 +62,13 @@ export const WalletDashboard = () => {
                 on DBS account
               </Typography>
               <Typography variant="h6">
-                S$ {data?.savings?.dbs ? data?.savings.dbs.toLocaleString() : 'Loading...'}
+                S$ {data ? data.savings.dbs.toLocaleString() : 'Loading...'}
               </Typography>
               <Typography color="text.secondary">
                 on BCA account
               </Typography>
               <Typography variant="h6">
-                Rp. {data?.savings?.bca ? data?.savings.bca.toLocaleString() : 'Loading...'}
+                Rp. {data ? data.savings.bca.toLocaleString() : 'Loading...'}
               </Typography>
             </Paper>
           </Grid>
@@ -136,9 +135,9 @@ export const WalletDashboard = () => {
                 rows={data?.detail ?? []} 
                 planned={data?.planned ?? { sgd: 0, idr: 0} as WalletPlanned}
                 updateDashboard={getWalletDashboard}
-                createHandler={() => setModal({ mode: 'create', detail: null })}
-                editHandler={(detail: WalletDetail) => setModal({ mode: 'edit', detail })}
-                deleteHandler={(detail: WalletDetail) => setModal({ mode: 'delete', detail })}
+                createHandler={() => openCreate()}
+                editHandler={openEdit}
+                deleteHandler={openDelete}
               />
             </Paper>
           </Grid>
@@ -147,9 +146,9 @@ export const WalletDashboard = () => {
       
       <WalletModal 
         mode={modal?.mode ?? null}
-        detail={modal?.detail ?? null}
+        detail={modal?.item ?? null}
         date={date}
-        onClose={() => setModal(null)}
+        onClose={close}
         onSuccess={onSuccess}
       />
     </>

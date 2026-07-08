@@ -1,16 +1,16 @@
 import { Title } from './Title';
 import { WalletDetail, WalletPlanned } from '../utils/model';
 import AddIcon from '@mui/icons-material/Add';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
 import { Grid, IconButton, TableRow, TableHead, TableCell, TableBody, Table, Button, Popover, Box, TextField, Typography, TableContainer } from '@mui/material';
 import ArrowLeftIcon from '@mui/icons-material/ArrowLeft';
 import ArrowRightIcon from '@mui/icons-material/ArrowRight';
 import { FormEvent, Fragment, useState } from 'react';
 import { CellTypography } from './CellTypography';
 import { AppAlert } from './AppAlert';
+import { RowActions } from './RowActions';
 import { useAlert } from '../hooks/useAlert';
 import { isValidYearMonth, shiftYearMonth, yearMonthTitle } from '../utils/date';
+import { compactTableStyle, tableContainerStyle } from '../utils/constant';
 
 interface DetailProps {
   date: string
@@ -92,8 +92,8 @@ export const Detail = (props: DetailProps) => {
           </IconButton>
         </Grid>
       </Grid>
-      <TableContainer sx={{ overflowX: 'auto' }}>
-        <Table size="small" sx={{ '& td, & th': { px: 0.5, py: 0.5, fontSize: '0.75rem' } }}>
+      <TableContainer sx={tableContainerStyle}>
+        <Table size="small" sx={compactTableStyle}>
           <TableHead>
             <TableRow>
               <TableCell>Name</TableCell>
@@ -110,14 +110,7 @@ export const Detail = (props: DetailProps) => {
                 <TableCell><CellTypography done={row.done}>{row.category}</CellTypography></TableCell>
                 <TableCell><CellTypography done={row.done}>{row.currency}</CellTypography></TableCell>
                 <TableCell align="right"><CellTypography done={row.done}>{row.amount.toLocaleString()}</CellTypography></TableCell>
-                <TableCell sx={{ whiteSpace: "nowrap" }}>
-                  <IconButton size="small" sx={{ p: 0.25 }} aria-label="edit" color="primary" onClick={()=>props.editHandler(row)}>
-                    <EditIcon fontSize="small" />
-                  </IconButton>
-                  <IconButton size="small" sx={{ p: 0.25 }} aria-label="delete" color="secondary" onClick={()=>props.deleteHandler(row)}>
-                    <DeleteIcon fontSize="small" />
-                  </IconButton>
-                </TableCell>
+                <RowActions onEdit={() => props.editHandler(row)} onDelete={() => props.deleteHandler(row)} />
               </TableRow>
             ))}
           </TableBody>
