@@ -47,13 +47,35 @@ func TestFetchLatestPosts(t *testing.T) {
 		}
 		return []byte(igFeedJSON), nil
 	}}
-	svc := &InstagramServiceImpl{InstagramClient: client}
+	repo := &fakeInstagramRepo{}
+	svc := &InstagramServiceImpl{InstagramClient: client, InstagramAccountRepo: repo}
 
-	posts, err := svc.fetchLatestPosts("foo")
+	posts, err := svc.fetchLatestPosts(repository.InstagramAccount{Username: "foo"})
 	require.NoError(t, err)
 	require.Len(t, posts, 2)
 	assert.Equal(t, "AAA", posts[0].Shortcode)
 	assert.Equal(t, "http://img/a", posts[0].DisplayURL)
+	// user id was resolved and persisted
+	assert.Equal(t, "123", repo.updatedUserIDs["foo"])
+}
+
+func TestFetchLatestPostsSkipsProfileWhenUserIDKnown(t *testing.T) {
+	var calledURLs []string
+	client := &fakeInstagramClient{getFn: func(url string) ([]byte, error) {
+		calledURLs = append(calledURLs, url)
+		return []byte(igFeedJSON), nil
+	}}
+	repo := &fakeInstagramRepo{}
+	svc := &InstagramServiceImpl{InstagramClient: client, InstagramAccountRepo: repo}
+
+	posts, err := svc.fetchLatestPosts(repository.InstagramAccount{Username: "foo", UserID: "123"})
+	require.NoError(t, err)
+	require.Len(t, posts, 2)
+	// profile endpoint must not be called, and user id must not be re-persisted
+	for _, u := range calledURLs {
+		assert.NotContains(t, u, "web_profile_info")
+	}
+	assert.Empty(t, repo.updatedUserIDs)
 }
 
 func TestFetchLatestPostsErrors(t *testing.T) {
@@ -61,7 +83,7 @@ func TestFetchLatestPostsErrors(t *testing.T) {
 		svc := &InstagramServiceImpl{InstagramClient: &fakeInstagramClient{
 			getFn: func(string) ([]byte, error) { return nil, errors.New("net") },
 		}}
-		_, err := svc.fetchLatestPosts("foo")
+		_, err := svc.fetchLatestPosts(repository.InstagramAccount{Username: "foo"})
 		assert.Error(t, err)
 	})
 
@@ -69,20 +91,23 @@ func TestFetchLatestPostsErrors(t *testing.T) {
 		svc := &InstagramServiceImpl{InstagramClient: &fakeInstagramClient{
 			getFn: func(string) ([]byte, error) { return []byte(`{"data":{"user":{}}}`), nil },
 		}}
-		_, err := svc.fetchLatestPosts("foo")
+		_, err := svc.fetchLatestPosts(repository.InstagramAccount{Username: "foo"})
 		assert.Error(t, err)
 	})
 
 	t.Run("missing items in feed", func(t *testing.T) {
-		svc := &InstagramServiceImpl{InstagramClient: &fakeInstagramClient{
-			getFn: func(url string) ([]byte, error) {
-				if strings.Contains(url, "web_profile_info") {
-					return []byte(igProfileJSON), nil
-				}
-				return []byte(`{}`), nil
+		svc := &InstagramServiceImpl{
+			InstagramAccountRepo: &fakeInstagramRepo{},
+			InstagramClient: &fakeInstagramClient{
+				getFn: func(url string) ([]byte, error) {
+					if strings.Contains(url, "web_profile_info") {
+						return []byte(igProfileJSON), nil
+					}
+					return []byte(`{}`), nil
+				},
 			},
-		}}
-		_, err := svc.fetchLatestPosts("foo")
+		}
+		_, err := svc.fetchLatestPosts(repository.InstagramAccount{Username: "foo"})
 		assert.Error(t, err)
 	})
 }

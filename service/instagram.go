@@ -49,7 +49,7 @@ func (s *InstagramServiceImpl) Run() {
 			}
 
 			log.Printf("Checking Instagram account: %s", account.Username)
-			posts, err := s.fetchLatestPosts(account.Username)
+			posts, err := s.fetchLatestPosts(account)
 			if err != nil {
 				log.Printf("[ERROR] fetching posts for %s: %v", account.Username, err)
 				continue
@@ -74,16 +74,24 @@ func (s *InstagramServiceImpl) Run() {
 	})
 }
 
-func (s *InstagramServiceImpl) fetchLatestPosts(username string) ([]igPost, error) {
-	// Step 1: resolve the numeric user id from the username.
-	profileBody, err := s.InstagramClient.Get(igProfileBase + username)
-	if err != nil {
-		return nil, err
-	}
-
-	userID := gjson.GetBytes(profileBody, "data.user.id").String()
+func (s *InstagramServiceImpl) fetchLatestPosts(account repository.InstagramAccount) ([]igPost, error) {
+	// Step 1: resolve the numeric user id from the username, but only when it is
+	// not already stored. Once resolved, persist it so future runs can skip this call.
+	userID := account.UserID
 	if userID == "" {
-		return nil, fmt.Errorf("could not resolve user id for %s", username)
+		profileBody, err := s.InstagramClient.Get(igProfileBase + account.Username)
+		if err != nil {
+			return nil, err
+		}
+
+		userID = gjson.GetBytes(profileBody, "data.user.id").String()
+		if userID == "" {
+			return nil, fmt.Errorf("could not resolve user id for %s", account.Username)
+		}
+
+		if err := s.InstagramAccountRepo.UpdateUserID(account.Username, userID); err != nil {
+			log.Printf("[ERROR] updating user_id for %s: %v", account.Username, err)
+		}
 	}
 
 	// Step 2: fetch the actual posts from the user's feed endpoint.
@@ -95,7 +103,7 @@ func (s *InstagramServiceImpl) fetchLatestPosts(username string) ([]igPost, erro
 
 	items := gjson.GetBytes(feedBody, "items")
 	if !items.Exists() {
-		return nil, fmt.Errorf("unexpected feed structure for %s", username)
+		return nil, fmt.Errorf("unexpected feed structure for %s", account.Username)
 	}
 
 	var posts []igPost

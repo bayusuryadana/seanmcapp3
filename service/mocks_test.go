@@ -52,6 +52,7 @@ type fakeInstagramRepo struct {
 	updateFn func(username, shortcodes string) error
 
 	updatedShortcodes map[string]string
+	updatedUserIDs    map[string]string
 }
 
 func (f *fakeInstagramRepo) GetAll() ([]repository.InstagramAccount, error) { return f.getAllFn() }
@@ -63,6 +64,14 @@ func (f *fakeInstagramRepo) UpdateLastShortcodes(username, shortcodes string) er
 	if f.updateFn != nil {
 		return f.updateFn(username, shortcodes)
 	}
+	return nil
+}
+
+func (f *fakeInstagramRepo) UpdateUserID(username, userID string) error {
+	if f.updatedUserIDs == nil {
+		f.updatedUserIDs = map[string]string{}
+	}
+	f.updatedUserIDs[username] = userID
 	return nil
 }
 
