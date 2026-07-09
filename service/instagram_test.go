@@ -246,3 +246,74 @@ func TestNotifyVideoThumbnailFallbackWhenTooLarge(t *testing.T) {
 	assert.Contains(t, tg.photos[0].caption, "Instagram")
 }
 
+func TestNotifyVideoDownloadErrorFallsBack(t *testing.T) {
+	tg := &fakeTelegramClient{videoURLFails: true}
+	client := &fakeInstagramClient{getFn: func(url string) ([]byte, error) {
+		return nil, errors.New("download failed")
+	}}
+	svc := &InstagramServiceImpl{TelegramClient: tg, InstagramClient: client, PersonalChatID: 7}
+	post := igPost{Shortcode: "VID", Media: []igMedia{{IsVideo: true, URL: "http://vid/v", ThumbnailURL: "http://img/t"}}}
+
+	svc.notify("foo", []igPost{post})
+
+	assert.Empty(t, tg.uploads)
+	require.Len(t, tg.photos, 1)
+	assert.Equal(t, "http://img/t", tg.photos[0].url)
+	assert.Contains(t, tg.photos[0].caption, "Instagram")
+}
+
+func TestNotifyVideoUploadFailureFallsBack(t *testing.T) {
+	tg := &fakeTelegramClient{videoURLFails: true, uploadFails: true}
+	client := &fakeInstagramClient{getFn: func(url string) ([]byte, error) {
+		return []byte("small"), nil
+	}}
+	svc := &InstagramServiceImpl{TelegramClient: tg, InstagramClient: client, PersonalChatID: 7}
+	post := igPost{Shortcode: "VID", Media: []igMedia{{IsVideo: true, URL: "http://vid/v", ThumbnailURL: "http://img/t"}}}
+
+	svc.notify("foo", []igPost{post})
+
+	require.Len(t, tg.uploads, 1) // upload attempted
+	require.Len(t, tg.photos, 1)  // then fell back to thumbnail
+	assert.Equal(t, "http://img/t", tg.photos[0].url)
+}
+
+func TestSendVideoFallbackNoThumbnailSendsNote(t *testing.T) {
+	tg := &fakeTelegramClient{}
+	svc := &InstagramServiceImpl{TelegramClient: tg, PersonalChatID: 7}
+
+	svc.sendVideoFallback("foo", "VID", "http://link/VID/", igMedia{IsVideo: true, URL: "http://vid/v"})
+
+	assert.Empty(t, tg.photos)
+	require.Len(t, tg.messages, 1)
+	assert.Contains(t, tg.messages[0].text, "http://link/VID/")
+}
+
+func TestSendMediaPhotoErrorIsLogged(t *testing.T) {
+	tg := &fakeTelegramClient{err: errors.New("boom")}
+	svc := &InstagramServiceImpl{TelegramClient: tg, PersonalChatID: 7}
+
+	// Should not panic; the error is logged and swallowed.
+	svc.sendMedia("foo", "IMG", "http://link/IMG/", 0, igMedia{IsVideo: false, URL: "http://img/x"})
+
+	require.Len(t, tg.photos, 1)
+	assert.Equal(t, "http://img/x", tg.photos[0].url)
+}
+
+const igSkippableFeedJSON = `{"items":[
+	{"code":"NOVID","media_type":2},
+	{"code":"NOIMG","media_type":1},
+	{"code":"EMPTYCAR","media_type":8,"carousel_media":[{"media_type":2}]}
+]}`
+
+func TestFetchLatestPostsSkipsMediaWithoutURLs(t *testing.T) {
+	client := &fakeInstagramClient{getFn: func(url string) ([]byte, error) {
+		return []byte(igSkippableFeedJSON), nil
+	}}
+	svc := &InstagramServiceImpl{InstagramClient: client, InstagramAccountRepo: &fakeInstagramRepo{}}
+
+	posts, err := svc.fetchLatestPosts(repository.InstagramAccount{Username: "foo", UserID: "123"})
+	require.NoError(t, err)
+	// every item resolves to zero usable media, so nothing is emitted
+	assert.Empty(t, posts)
+}
+

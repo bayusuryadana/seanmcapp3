@@ -109,3 +109,41 @@ func TestTelegramSendVideoUpload(t *testing.T) {
 	assert.Equal(t, 13, resp.Result.MessageID)
 }
 
+func TestTelegramSendVideoErrors(t *testing.T) {
+	t.Run("decode error", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`not-json`))
+		}))
+		defer srv.Close()
+		_, err := NewTelegramClient(srv.URL, "bot").SendVideo(5, "http://vid/1", "cap")
+		assert.Error(t, err)
+	})
+
+	t.Run("request error", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+		url := srv.URL
+		srv.Close()
+		_, err := NewTelegramClient(url, "bot").SendVideo(5, "http://vid/1", "cap")
+		assert.Error(t, err)
+	})
+}
+
+func TestTelegramSendVideoUploadErrors(t *testing.T) {
+	t.Run("decode error", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			_, _ = w.Write([]byte(`not-json`))
+		}))
+		defer srv.Close()
+		_, err := NewTelegramClient(srv.URL, "bot").SendVideoUpload(5, []byte("bytes"), "clip.mp4", "cap")
+		assert.Error(t, err)
+	})
+
+	t.Run("request error", func(t *testing.T) {
+		srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
+		url := srv.URL
+		srv.Close()
+		_, err := NewTelegramClient(url, "bot").SendVideoUpload(5, []byte("bytes"), "clip.mp4", "cap")
+		assert.Error(t, err)
+	})
+}
+
