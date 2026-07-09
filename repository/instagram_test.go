@@ -13,10 +13,10 @@ func TestInstagramGetAll(t *testing.T) {
 	db, mock := newMockDB(t)
 	repo := &InstagramAccountRepoImpl{DB: db}
 
-	rows := sqlmock.NewRows([]string{"username", "last_shortcodes", "user_id"}).
-		AddRow("foo", "AAA,BBB", "123").
-		AddRow("bar", "", "")
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT username, COALESCE(last_shortcodes, ''), COALESCE(user_id, '') FROM instagram_accounts")).
+	rows := sqlmock.NewRows([]string{"username", "last_shortcodes", "user_id", "last_story_ids"}).
+		AddRow("foo", "AAA,BBB", "123", "111,222").
+		AddRow("bar", "", "", "")
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT username, COALESCE(last_shortcodes, ''), COALESCE(user_id, ''), COALESCE(last_story_ids, '') FROM instagram_accounts")).
 		WillReturnRows(rows)
 
 	got, err := repo.GetAll()
@@ -25,6 +25,7 @@ func TestInstagramGetAll(t *testing.T) {
 	assert.Equal(t, "foo", got[0].Username)
 	assert.Equal(t, "AAA,BBB", got[0].LastShortcodes)
 	assert.Equal(t, "123", got[0].UserID)
+	assert.Equal(t, "111,222", got[0].LastStoryIDs)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
@@ -50,6 +51,19 @@ func TestInstagramUpdateUserID(t *testing.T) {
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
 	err := repo.UpdateUserID("foo", "123")
+	require.NoError(t, err)
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestInstagramUpdateLastStoryIDs(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := &InstagramAccountRepoImpl{DB: db}
+
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE instagram_accounts SET last_story_ids")).
+		WithArgs("111,222", "foo").
+		WillReturnResult(sqlmock.NewResult(0, 1))
+
+	err := repo.UpdateLastStoryIDs("foo", "111,222")
 	require.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
 }

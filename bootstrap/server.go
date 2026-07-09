@@ -126,6 +126,7 @@ func InitScheduler(mainServices MainServices) *cron.Cron {
 		{Task: mainServices.NewsService, CronExpr: "0 0 9 * * *", Repeat: true},
 		{Task: mainServices.StockService, CronExpr: "0 0 19 * * *", Repeat: true},
 		{Task: mainServices.InstagramService, CronExpr: "0 0 10 * * *", Repeat: true},
+		{Task: mainServices.InstagramService, CronExpr: "0 0 22 * * *", Repeat: true},
 	}
 
 	for _, s := range schedulers {
