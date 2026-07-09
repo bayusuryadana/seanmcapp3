@@ -424,6 +424,22 @@ func TestProcessStoriesNoActiveStoryClearsCache(t *testing.T) {
 	assert.Empty(t, tg.messages)
 }
 
+func TestNotifyStoriesEscapesUnderscoreUsername(t *testing.T) {
+	tg := &fakeTelegramClient{}
+	svc := &InstagramServiceImpl{TelegramClient: tg, PersonalChatID: 7}
+	stories := []igStory{{ID: "999", Media: igMedia{URL: "http://img/s"}}}
+
+	svc.notifyStories("jjuya_o0o", stories)
+
+	require.Len(t, tg.messages, 1)
+	txt := tg.messages[0].text
+	// username underscores escaped inside bold so Telegram markdown does not choke
+	assert.Contains(t, txt, "*jjuya\\_o0o*")
+	// link rendered as inline markdown link with escaped visible text + raw url target
+	assert.Contains(t, txt, "[https://www.instagram.com/stories/jjuya\\_o0o/999/]")
+	assert.Contains(t, txt, "(https://www.instagram.com/stories/jjuya_o0o/999/)")
+}
+
 func TestFetchLatestStoriesEmptyAndErrors(t *testing.T) {
 	t.Run("no active reel", func(t *testing.T) {
 		client := &fakeInstagramClient{getFn: func(string) ([]byte, error) {
