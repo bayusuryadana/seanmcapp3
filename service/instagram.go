@@ -294,10 +294,6 @@ func (s *InstagramServiceImpl) fetchLatestStories(username, userID string) ([]ig
 }
 
 func detectNewStories(storedRaw string, current []igStory) []igStory {
-	if storedRaw == "" {
-		return nil
-	}
-
 	stored := make(map[string]bool)
 	for _, id := range strings.Split(storedRaw, ",") {
 		stored[strings.TrimSpace(id)] = true

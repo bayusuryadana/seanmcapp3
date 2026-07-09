@@ -390,6 +390,40 @@ func TestFetchLatestStoriesAltShape(t *testing.T) {
 	assert.Equal(t, "777", stories[0].ID)
 }
 
+func TestProcessStoriesEmptyCacheSendsEverything(t *testing.T) {
+	accountRepo := &fakeInstagramRepo{}
+	client := &fakeInstagramClient{getFn: func(string) ([]byte, error) {
+		return []byte(igStoriesJSON), nil // stories 111 + 222 (333 has no media)
+	}}
+	tg := &fakeTelegramClient{}
+	svc := &InstagramServiceImpl{InstagramAccountRepo: accountRepo, InstagramClient: client, TelegramClient: tg}
+
+	account := repository.InstagramAccount{Username: "foo", UserID: "123", LastStoryIDs: ""}
+	err := svc.processStories(account, "123")
+	require.NoError(t, err)
+
+	// empty cache => all current stories are new and delivered
+	require.Len(t, tg.messages, 2)
+	assert.Equal(t, "111,222", accountRepo.updatedStoryIDs["foo"])
+}
+
+func TestProcessStoriesNoActiveStoryClearsCache(t *testing.T) {
+	accountRepo := &fakeInstagramRepo{}
+	client := &fakeInstagramClient{getFn: func(string) ([]byte, error) {
+		return []byte(`{"reels_media":[]}`), nil // no active story
+	}}
+	tg := &fakeTelegramClient{}
+	svc := &InstagramServiceImpl{InstagramAccountRepo: accountRepo, InstagramClient: client, TelegramClient: tg}
+
+	account := repository.InstagramAccount{Username: "foo", UserID: "123", LastStoryIDs: "111,222"}
+	err := svc.processStories(account, "123")
+	require.NoError(t, err)
+
+	// cache is replaced with the (empty) current set, nothing sent
+	assert.Equal(t, "", accountRepo.updatedStoryIDs["foo"])
+	assert.Empty(t, tg.messages)
+}
+
 func TestFetchLatestStoriesEmptyAndErrors(t *testing.T) {
 	t.Run("no active reel", func(t *testing.T) {
 		client := &fakeInstagramClient{getFn: func(string) ([]byte, error) {
@@ -414,8 +448,8 @@ func TestFetchLatestStoriesEmptyAndErrors(t *testing.T) {
 func TestDetectNewStories(t *testing.T) {
 	current := []igStory{{ID: "111"}, {ID: "222"}, {ID: "333"}}
 
-	// first run (empty stored) seeds without emitting
-	assert.Empty(t, detectNewStories("", current))
+	// empty cache: everything is new (send everything on first run)
+	assert.Len(t, detectNewStories("", current), 3)
 
 	// only unseen ids are new
 	got := detectNewStories("111,222", current)
