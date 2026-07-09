@@ -104,10 +104,28 @@ type telegramPhoto struct {
 	caption string
 }
 
+type telegramVideo struct {
+	chatID  int64
+	url     string
+	caption string
+}
+
+type telegramVideoUpload struct {
+	chatID   int64
+	filename string
+	caption  string
+	size     int
+}
+
 type fakeTelegramClient struct {
 	messages []telegramMessage
 	photos   []telegramPhoto
+	videos   []telegramVideo
+	uploads  []telegramVideoUpload
 	err      error
+
+	videoURLFails bool // when true, SendVideo responds Ok=false (simulates >20MB)
+	uploadFails   bool // when true, SendVideoUpload responds Ok=false
 }
 
 func (f *fakeTelegramClient) SendMessage(chatID int64, text string) (external.TelegramResponse, error) {
@@ -118,6 +136,16 @@ func (f *fakeTelegramClient) SendMessage(chatID int64, text string) (external.Te
 func (f *fakeTelegramClient) SendPhoto(chatID int64, photoURL, caption string) (external.TelegramResponse, error) {
 	f.photos = append(f.photos, telegramPhoto{chatID, photoURL, caption})
 	return external.TelegramResponse{Ok: true}, f.err
+}
+
+func (f *fakeTelegramClient) SendVideo(chatID int64, videoURL, caption string) (external.TelegramResponse, error) {
+	f.videos = append(f.videos, telegramVideo{chatID, videoURL, caption})
+	return external.TelegramResponse{Ok: !f.videoURLFails}, f.err
+}
+
+func (f *fakeTelegramClient) SendVideoUpload(chatID int64, data []byte, filename, caption string) (external.TelegramResponse, error) {
+	f.uploads = append(f.uploads, telegramVideoUpload{chatID, filename, caption, len(data)})
+	return external.TelegramResponse{Ok: !f.uploadFails}, f.err
 }
 
 // ---- InstagramClient fake ----

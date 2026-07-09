@@ -54,7 +54,9 @@ func TestFetchLatestPosts(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, posts, 2)
 	assert.Equal(t, "AAA", posts[0].Shortcode)
-	assert.Equal(t, "http://img/a", posts[0].DisplayURL)
+	require.Len(t, posts[0].Media, 1)
+	assert.False(t, posts[0].Media[0].IsVideo)
+	assert.Equal(t, "http://img/a", posts[0].Media[0].URL)
 	// user id was resolved and persisted
 	assert.Equal(t, "123", repo.updatedUserIDs["foo"])
 }
@@ -151,7 +153,96 @@ func TestInstagramRunSendsNewPosts(t *testing.T) {
 	require.Len(t, tg.photos, 1)
 	assert.Equal(t, int64(42), tg.photos[0].chatID)
 	assert.Equal(t, "http://img/b", tg.photos[0].url)
-	assert.Contains(t, tg.photos[0].caption, "foo")
+	assert.Empty(t, tg.photos[0].caption) // media carries no caption anymore
+	// the header + link now arrive as a separate summary message
+	require.Len(t, tg.messages, 1)
+	assert.Contains(t, tg.messages[0].text, "foo")
+	assert.Contains(t, tg.messages[0].text, "BBB")
 	assert.Equal(t, "AAA,BBB", accountRepo.updatedShortcodes["foo"])
+}
+
+const igMixedFeedJSON = `{"items":[
+	{"code":"VID","media_type":2,"caption":{"text":"a *fancy* caption"},"video_versions":[{"url":"http://vid/v"}],"image_versions2":{"candidates":[{"url":"http://img/vthumb"}]}},
+	{"code":"CAR","media_type":8,"carousel_media":[
+		{"media_type":1,"image_versions2":{"candidates":[{"url":"http://img/c1"}]}},
+		{"media_type":2,"video_versions":[{"url":"http://vid/c2"}],"image_versions2":{"candidates":[{"url":"http://img/c2thumb"}]}}
+	]}
+]}`
+
+func TestParseVideoAndCarousel(t *testing.T) {
+	client := &fakeInstagramClient{getFn: func(url string) ([]byte, error) {
+		return []byte(igMixedFeedJSON), nil
+	}}
+	svc := &InstagramServiceImpl{InstagramClient: client, InstagramAccountRepo: &fakeInstagramRepo{}}
+
+	posts, err := svc.fetchLatestPosts(repository.InstagramAccount{Username: "foo", UserID: "123"})
+	require.NoError(t, err)
+	require.Len(t, posts, 2)
+
+	// video post
+	require.Len(t, posts[0].Media, 1)
+	assert.True(t, posts[0].Media[0].IsVideo)
+	assert.Equal(t, "http://vid/v", posts[0].Media[0].URL)
+	assert.Equal(t, "http://img/vthumb", posts[0].Media[0].ThumbnailURL)
+	assert.Equal(t, "a *fancy* caption", posts[0].Caption)
+
+	// carousel with an image + a video child, in order
+	require.Len(t, posts[1].Media, 2)
+	assert.False(t, posts[1].Media[0].IsVideo)
+	assert.Equal(t, "http://img/c1", posts[1].Media[0].URL)
+	assert.True(t, posts[1].Media[1].IsVideo)
+	assert.Equal(t, "http://vid/c2", posts[1].Media[1].URL)
+}
+
+func TestNotifySendsVideoByURLThenSummary(t *testing.T) {
+	tg := &fakeTelegramClient{}
+	svc := &InstagramServiceImpl{TelegramClient: tg, PersonalChatID: 7}
+	post := igPost{
+		Shortcode: "VID",
+		Caption:   "hello _world_",
+		Media:     []igMedia{{IsVideo: true, URL: "http://vid/v", ThumbnailURL: "http://img/t"}},
+	}
+
+	svc.notify("foo", []igPost{post})
+
+	require.Len(t, tg.videos, 1)
+	assert.Equal(t, "http://vid/v", tg.videos[0].url)
+	assert.Empty(t, tg.uploads) // URL send succeeded, no upload needed
+	require.Len(t, tg.messages, 1)
+	assert.Contains(t, tg.messages[0].text, "foo")
+	assert.Contains(t, tg.messages[0].text, "\\_world\\_") // caption markdown-escaped
+}
+
+func TestNotifyVideoUploadFallbackWhenURLFails(t *testing.T) {
+	tg := &fakeTelegramClient{videoURLFails: true}
+	client := &fakeInstagramClient{getFn: func(url string) ([]byte, error) {
+		return []byte("small-video-bytes"), nil
+	}}
+	svc := &InstagramServiceImpl{TelegramClient: tg, InstagramClient: client, PersonalChatID: 7}
+	post := igPost{Shortcode: "VID", Media: []igMedia{{IsVideo: true, URL: "http://vid/v", ThumbnailURL: "http://img/t"}}}
+
+	svc.notify("foo", []igPost{post})
+
+	require.Len(t, tg.videos, 1)  // URL attempt happened
+	require.Len(t, tg.uploads, 1) // fell back to multipart upload
+	assert.Equal(t, "VID_0.mp4", tg.uploads[0].filename)
+	assert.Empty(t, tg.photos) // upload succeeded, no thumbnail fallback
+}
+
+func TestNotifyVideoThumbnailFallbackWhenTooLarge(t *testing.T) {
+	tg := &fakeTelegramClient{videoURLFails: true}
+	big := make([]byte, igMaxUploadBytes+1)
+	client := &fakeInstagramClient{getFn: func(url string) ([]byte, error) {
+		return big, nil
+	}}
+	svc := &InstagramServiceImpl{TelegramClient: tg, InstagramClient: client, PersonalChatID: 7}
+	post := igPost{Shortcode: "VID", Media: []igMedia{{IsVideo: true, URL: "http://vid/v", ThumbnailURL: "http://img/t"}}}
+
+	svc.notify("foo", []igPost{post})
+
+	assert.Empty(t, tg.uploads) // too big to upload
+	require.Len(t, tg.photos, 1)
+	assert.Equal(t, "http://img/t", tg.photos[0].url)
+	assert.Contains(t, tg.photos[0].caption, "Instagram")
 }
 
