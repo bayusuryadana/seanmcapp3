@@ -31,7 +31,7 @@ func TestInstagramGetUnauthorized(t *testing.T) {
 
 	_, err := NewInstagramClient("sid", "csrf").Get(srv.URL)
 	require.Error(t, err)
-	assert.Contains(t, err.Error(), "session expired")
+	assert.ErrorIs(t, err, ErrSessionExpired)
 }
 
 func TestInstagramGetUnexpectedStatus(t *testing.T) {

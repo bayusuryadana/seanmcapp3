@@ -2,6 +2,8 @@ package service
 
 import (
 	"errors"
+	"fmt"
+	"seanmcapp/external"
 	"seanmcapp/repository"
 	"strings"
 	"testing"
@@ -159,6 +161,30 @@ func TestInstagramRunSendsNewPosts(t *testing.T) {
 	assert.Contains(t, tg.messages[0].text, "foo")
 	assert.Contains(t, tg.messages[0].text, "BBB")
 	assert.Equal(t, "AAA,BBB", accountRepo.updatedShortcodes["foo"])
+}
+
+func TestInstagramRunAlertsOnceOnExpiredSession(t *testing.T) {
+	accountRepo := &fakeInstagramRepo{getAllFn: func() ([]repository.InstagramAccount, error) {
+		return []repository.InstagramAccount{
+			{Username: "foo", UserID: "1"},
+			{Username: "bar", UserID: "2"},
+		}, nil
+	}}
+	// Feed endpoint always reports an expired session.
+	client := &fakeInstagramClient{getFn: func(string) ([]byte, error) {
+		return nil, fmt.Errorf("%w (HTTP 401)", external.ErrSessionExpired)
+	}}
+	tg := &fakeTelegramClient{}
+	svc := &InstagramServiceImpl{InstagramAccountRepo: accountRepo, InstagramClient: client, TelegramClient: tg, PersonalChatID: 42}
+
+	svc.Run()
+
+	// Exactly one alert, and the run stops before touching the second account.
+	require.Len(t, tg.messages, 1)
+	assert.Equal(t, int64(42), tg.messages[0].chatID)
+	assert.Contains(t, tg.messages[0].text, "IG_SESSION_ID")
+	assert.Empty(t, tg.photos)
+	assert.Empty(t, accountRepo.updatedShortcodes)
 }
 
 const igMixedFeedJSON = `{"items":[

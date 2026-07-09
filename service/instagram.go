@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"seanmcapp/external"
@@ -62,6 +63,14 @@ func (s *InstagramServiceImpl) Run() {
 			log.Printf("Checking Instagram account: %s", account.Username)
 			posts, err := s.fetchLatestPosts(account)
 			if err != nil {
+				if errors.Is(err, external.ErrSessionExpired) {
+					// Every account will fail the same way, so alert once and stop the run.
+					log.Printf("[ERROR] instagram session expired while checking %s: %v", account.Username, err)
+					if _, sendErr := s.TelegramClient.SendMessage(s.PersonalChatID, "⚠️ Instagram session expired — please update *IG_SESSION_ID*."); sendErr != nil {
+						log.Printf("[ERROR] sending session-expired alert: %v", sendErr)
+					}
+					return
+				}
 				log.Printf("[ERROR] fetching posts for %s: %v", account.Username, err)
 				continue
 			}
