@@ -79,6 +79,8 @@ func (s *InstagramServiceImpl) Run() {
 				return
 			}
 		}
+
+		log.Printf("===== Instagram run/trigger is completed =====")
 	})
 }
 
@@ -294,10 +296,6 @@ func (s *InstagramServiceImpl) fetchLatestStories(username, userID string) ([]ig
 }
 
 func detectNewStories(storedRaw string, current []igStory) []igStory {
-	if storedRaw == "" {
-		return nil
-	}
-
 	stored := make(map[string]bool)
 	for _, id := range strings.Split(storedRaw, ",") {
 		stored[strings.TrimSpace(id)] = true
@@ -340,7 +338,7 @@ func (s *InstagramServiceImpl) notify(username string, newPosts []igPost) {
 			time.Sleep(1 * time.Second)
 		}
 
-		summary := fmt.Sprintf("📸 New post from *%s*\n🔗 %s", username, postLink)
+		summary := fmt.Sprintf("📸 New post from *%s*\n🔗 [%s](%s)", escapeMarkdown(username), escapeMarkdown(postLink), postLink)
 		if caption := strings.TrimSpace(p.Caption); caption != "" {
 			summary += "\n\n" + escapeMarkdown(caption)
 		}
@@ -358,7 +356,7 @@ func (s *InstagramServiceImpl) notifyStories(username string, newStories []igSto
 		s.sendMedia(username, st.ID, storyLink, 0, st.Media)
 		time.Sleep(1 * time.Second)
 
-		summary := fmt.Sprintf("👀 New story from *%s*\n🔗 %s", username, storyLink)
+		summary := fmt.Sprintf("👀 New story from *%s*\n🔗 [%s](%s)", escapeMarkdown(username), escapeMarkdown(storyLink), storyLink)
 		if caption := strings.TrimSpace(st.Caption); caption != "" {
 			summary += "\n\n" + escapeMarkdown(caption)
 		}
