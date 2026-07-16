@@ -40,8 +40,9 @@ type TelegramSettings struct {
 }
 
 var (
-	once   sync.Once
-	config AppsSettings
+	once    sync.Once
+	config  AppsSettings
+	fatalFn = log.Fatal
 )
 
 func GetAppSettings() AppsSettings {
@@ -54,64 +55,64 @@ func GetAppSettings() AppsSettings {
 func getAppSettings() AppsSettings {
 	dbHost := os.Getenv("DATABASE_HOST")
 	if dbHost == "" {
-		log.Fatal("DATABASE_HOST is not set")
+		fatalFn("DATABASE_HOST is not set")
 	}
 
 	dbName := os.Getenv("DATABASE_NAME")
 	if dbName == "" {
-		log.Fatal("DATABASE_NAME is not set")
+		fatalFn("DATABASE_NAME is not set")
 	}
 
 	dbPass := os.Getenv("DATABASE_PASS")
 	if dbPass == "" {
-		log.Fatal("DATABASE_PASS is not set")
+		fatalFn("DATABASE_PASS is not set")
 	}
 
 	dbUser := os.Getenv("DATABASE_USER")
 	if dbUser == "" {
-		log.Fatal("DATABASE_USER is not set")
+		fatalFn("DATABASE_USER is not set")
 	}
 
 	walletSecret := os.Getenv("APPS_SECRET_KEY")
 	if walletSecret == "" {
-		log.Fatal("APPS_SECRET_KEY is not set")
+		fatalFn("APPS_SECRET_KEY is not set")
 	}
 
 	walletPassword := os.Getenv("APPS_PASSWORD")
 	if walletPassword == "" {
-		log.Fatal("APPS_PASSWORD is not set")
+		fatalFn("APPS_PASSWORD is not set")
 	}
 
 	telegramEndpoint := os.Getenv("TELEGRAM_BOT_ENDPOINT")
 	if telegramEndpoint == "" {
-		log.Fatal("TELEGRAM_BOT_ENDPOINT is not set")
+		fatalFn("TELEGRAM_BOT_ENDPOINT is not set")
 	}
 
 	telegramBotname := os.Getenv("TELEGRAM_BOT_NAME")
 	if telegramBotname == "" {
-		log.Fatal("TELEGRAM_BOT_NAME is not set")
+		fatalFn("TELEGRAM_BOT_NAME is not set")
 	}
 
 	telegramPersonalChatIdStr := os.Getenv("TELEGRAM_PERSONAL_CHAT_ID")
 	telegramPersonalChatId, err := strconv.ParseInt(telegramPersonalChatIdStr, 10, 64)
 	if err != nil {
-		log.Fatal("TELEGRAM_PERSONAL_CHAT_ID is not set")
+		fatalFn("TELEGRAM_PERSONAL_CHAT_ID is not set")
 	}
 
 	telegramGroupChatIdStr := os.Getenv("TELEGRAM_GROUP_CHAT_ID")
 	telegramGroupChatId, err := strconv.ParseInt(telegramGroupChatIdStr, 10, 64)
 	if err != nil {
-		log.Fatal("TELEGRAM_PERSONAL_CHAT_ID is not set")
+		fatalFn("TELEGRAM_GROUP_CHAT_ID is not set")
 	}
 
 	igSessionID := os.Getenv("IG_SESSION_ID")
 	if igSessionID == "" {
-		log.Fatal("IG_SESSION_ID is not set")
+		fatalFn("IG_SESSION_ID is not set")
 	}
 
 	igCSRFToken := os.Getenv("IG_CSRF_TOKEN")
 	if igCSRFToken == "" {
-		log.Fatal("IG_CSRF_TOKEN is not set")
+		fatalFn("IG_CSRF_TOKEN is not set")
 	}
 
 	return AppsSettings{
@@ -142,4 +143,3 @@ func GetFrontendPath() string {
 	wd, _ := os.Getwd()
 	return filepath.Join(wd, "ui", ".build")
 }
-

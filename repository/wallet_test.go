@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"errors"
 	"regexp"
 	"testing"
 
@@ -107,4 +108,34 @@ func TestWalletDelete(t *testing.T) {
 		_, err := repo.Delete(7)
 		assert.ErrorIs(t, err, ErrNotFound)
 	})
+}
+
+func TestWalletGetAllError(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := &WalletRepoImpl{DB: db}
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM wallets")).WillReturnError(errors.New("query failed"))
+
+	_, err := repo.GetAll()
+	assert.Error(t, err)
+}
+
+func TestWalletGetAllocationsError(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := &WalletRepoImpl{DB: db}
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT category, amount FROM allocations")).WillReturnError(errors.New("query failed"))
+
+	_, err := repo.GetAllocations()
+	assert.Error(t, err)
+}
+
+func TestWalletInsertError(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := &WalletRepoImpl{DB: db}
+
+	mock.ExpectQuery(regexp.QuoteMeta("INSERT INTO wallets")).WillReturnError(errors.New("insert failed"))
+
+	_, err := repo.Insert(Wallet{Date: 202406, Name: "a", Account: "DBS"})
+	assert.Error(t, err)
 }

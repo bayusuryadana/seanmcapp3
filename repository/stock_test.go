@@ -2,6 +2,7 @@ package repository
 
 import (
 	"database/sql"
+	"errors"
 	"regexp"
 	"testing"
 
@@ -84,4 +85,24 @@ func TestStockDelete(t *testing.T) {
 		_, err := repo.Delete("BBCA")
 		assert.ErrorIs(t, err, ErrNotFound)
 	})
+}
+
+func TestStockGetAllError(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := &StockRepoImpl{DB: db}
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT * FROM stocks")).WillReturnError(errors.New("query failed"))
+
+	_, err := repo.GetAll()
+	assert.Error(t, err)
+}
+
+func TestStockCreateError(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := &StockRepoImpl{DB: db}
+
+	mock.ExpectQuery(regexp.QuoteMeta("INSERT INTO stocks")).WillReturnError(errors.New("insert failed"))
+
+	_, err := repo.Create(Stock{Name: "BBCA", BestPrice: 100, FairPrice: 200, Status: true})
+	assert.Error(t, err)
 }

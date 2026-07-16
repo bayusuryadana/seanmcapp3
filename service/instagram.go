@@ -82,7 +82,7 @@ func (s *InstagramServiceImpl) Run() {
 		}
 
 		// Add a small random delay before the whole account loop runs.
-		sleepRandom(30*time.Second, 3*time.Minute)
+		sleepRandom(30*time.Second, 90*time.Second)
 
 		for i, account := range accounts {
 			if i > 0 {
