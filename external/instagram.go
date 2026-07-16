@@ -4,8 +4,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
-	"net/http/cookiejar"
+	http "github.com/bogdanfinn/fhttp"
+	tls_client "github.com/bogdanfinn/tls-client"
+	"github.com/bogdanfinn/tls-client/profiles"
 )
 
 const (
@@ -24,15 +25,25 @@ type InstagramClient interface {
 type InstagramClientImpl struct {
 	SessionID string
 	CSRFToken string
-	client    *http.Client
+	client    tls_client.HttpClient
 }
 
 func NewInstagramClient(sessionID, csrfToken string) *InstagramClientImpl {
-	jar, _ := cookiejar.New(nil)
+	jar := tls_client.NewCookieJar()
+	client, err := tls_client.NewHttpClient(tls_client.NewNoopLogger(),
+		tls_client.WithTimeoutSeconds(15),
+		tls_client.WithClientProfile(profiles.Chrome_144),
+		tls_client.WithNotFollowRedirects(),
+		tls_client.WithCookieJar(jar),
+	)
+	if err != nil {
+		panic(fmt.Sprintf("failed to create tls client: %v", err))
+	}
+
 	return &InstagramClientImpl{
 		SessionID: sessionID,
 		CSRFToken: csrfToken,
-		client:    &http.Client{Timeout: httpTimeout, Jar: jar},
+		client:    client,
 	}
 }
 

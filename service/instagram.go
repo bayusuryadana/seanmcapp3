@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"math/rand"
 	"seanmcapp/external"
 	"seanmcapp/repository"
 	"strings"
@@ -55,6 +56,23 @@ type igStory struct {
 	Media   igMedia
 }
 
+var sleepFn = time.Sleep
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
+
+func randomDuration(min, max time.Duration) time.Duration {
+	if max <= min {
+		return min
+	}
+	return min + time.Duration(rand.Int63n(int64(max-min)))
+}
+
+func sleepRandom(min, max time.Duration) {
+	sleepFn(randomDuration(min, max))
+}
+
 func (s *InstagramServiceImpl) Run() {
 	s.guard.run("instagram run", func() {
 		accounts, err := s.InstagramAccountRepo.GetAll()
@@ -63,9 +81,12 @@ func (s *InstagramServiceImpl) Run() {
 			return
 		}
 
+		// Add a small random delay before the whole account loop runs.
+		sleepRandom(30*time.Second, 3*time.Minute)
+
 		for i, account := range accounts {
 			if i > 0 {
-				time.Sleep(5 * time.Second)
+				sleepRandom(5*time.Second, 12*time.Second)
 			}
 
 			log.Printf("Checking Instagram account: %s", account.Username)
@@ -335,7 +356,7 @@ func (s *InstagramServiceImpl) notify(username string, newPosts []igPost) {
 
 		for i, m := range p.Media {
 			s.sendMedia(username, p.Shortcode, postLink, i, m)
-			time.Sleep(1 * time.Second)
+			sleepRandom(1100*time.Millisecond, 2600*time.Millisecond)
 		}
 
 		summary := fmt.Sprintf("📸 New post from *%s*\n🔗 [%s](%s)", escapeMarkdown(username), escapeMarkdown(postLink), postLink)
@@ -345,7 +366,7 @@ func (s *InstagramServiceImpl) notify(username string, newPosts []igPost) {
 		if _, err := s.TelegramClient.SendMessage(s.PersonalChatID, summary); err != nil {
 			log.Printf("[ERROR] sending summary for %s/%s: %v", username, p.Shortcode, err)
 		}
-		time.Sleep(1 * time.Second)
+		sleepRandom(1100*time.Millisecond, 2700*time.Millisecond)
 	}
 }
 
@@ -354,7 +375,7 @@ func (s *InstagramServiceImpl) notifyStories(username string, newStories []igSto
 		storyLink := fmt.Sprintf("%s%s/%s/", igStoryBase, username, st.ID)
 
 		s.sendMedia(username, st.ID, storyLink, 0, st.Media)
-		time.Sleep(1 * time.Second)
+		sleepRandom(1300*time.Millisecond, 3000*time.Millisecond)
 
 		summary := fmt.Sprintf("👀 New story from *%s*\n🔗 [%s](%s)", escapeMarkdown(username), escapeMarkdown(storyLink), storyLink)
 		if caption := strings.TrimSpace(st.Caption); caption != "" {
@@ -363,7 +384,7 @@ func (s *InstagramServiceImpl) notifyStories(username string, newStories []igSto
 		if _, err := s.TelegramClient.SendMessage(s.PersonalChatID, summary); err != nil {
 			log.Printf("[ERROR] sending story summary for %s/%s: %v", username, st.ID, err)
 		}
-		time.Sleep(1 * time.Second)
+		sleepRandom(1300*time.Millisecond, 3000*time.Millisecond)
 	}
 }
 

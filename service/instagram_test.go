@@ -3,14 +3,21 @@ package service
 import (
 	"errors"
 	"fmt"
+	"os"
 	"seanmcapp/external"
 	"seanmcapp/repository"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func TestMain(m *testing.M) {
+	sleepFn = func(time.Duration) {}
+	os.Exit(m.Run())
+}
 
 func TestDetectNewPosts(t *testing.T) {
 	tests := []struct {
