@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"regexp"
 	"testing"
 
@@ -66,4 +67,15 @@ func TestInstagramUpdateLastStoryIDs(t *testing.T) {
 	err := repo.UpdateLastStoryIDs("foo", "111,222")
 	require.NoError(t, err)
 	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestInstagramGetAllQueryError(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := &InstagramAccountRepoImpl{DB: db}
+
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT username, COALESCE(last_shortcodes, ''), COALESCE(user_id, ''), COALESCE(last_story_ids, '') FROM instagram_accounts")).
+		WillReturnError(errors.New("query failed"))
+
+	_, err := repo.GetAll()
+	assert.Error(t, err)
 }
