@@ -5,6 +5,7 @@ import (
 )
 
 type InstagramAccount struct {
+	ID             int    `db:"id"`
 	Username       string `db:"username"`
 	LastShortcodes string `db:"last_shortcodes"` // comma-separated post shortcodes, e.g. "ABC123,DEF456,..."
 	UserID         string `db:"user_id"`         // numeric instagram user id; empty when not yet resolved
@@ -23,7 +24,7 @@ type InstagramAccountRepoImpl struct {
 }
 
 func (r *InstagramAccountRepoImpl) GetAll() ([]InstagramAccount, error) {
-	rows, err := r.DB.Query("SELECT username, COALESCE(last_shortcodes, ''), COALESCE(user_id, ''), COALESCE(last_story_ids, '') FROM instagram_accounts")
+	rows, err := r.DB.Query("SELECT id, username, COALESCE(last_shortcodes, ''), COALESCE(user_id, ''), COALESCE(last_story_ids, '') FROM instagram_accounts")
 	if err != nil {
 		return nil, err
 	}
@@ -32,7 +33,7 @@ func (r *InstagramAccountRepoImpl) GetAll() ([]InstagramAccount, error) {
 	var accounts []InstagramAccount
 	for rows.Next() {
 		var a InstagramAccount
-		if err := rows.Scan(&a.Username, &a.LastShortcodes, &a.UserID, &a.LastStoryIDs); err != nil {
+		if err := rows.Scan(&a.ID, &a.Username, &a.LastShortcodes, &a.UserID, &a.LastStoryIDs); err != nil {
 			return nil, err
 		}
 		accounts = append(accounts, a)
