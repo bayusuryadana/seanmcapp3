@@ -147,6 +147,27 @@ func TestRandomDurationMinMax(t *testing.T) {
 	assert.Equal(t, 100*time.Millisecond, randomDuration(100*time.Millisecond, 100*time.Millisecond))
 }
 
+func TestSelectAccountsForHour(t *testing.T) {
+	accounts := make([]repository.InstagramAccount, 26)
+	for i := range accounts {
+		accounts[i].ID = i + 1
+		accounts[i].Username = fmt.Sprintf("acct-%d", i)
+	}
+
+	t.Run("matches the requested bucket by account ID after hour offset", func(t *testing.T) {
+		selected := selectAccountsForHour(accounts, 3)
+		require.Len(t, selected, 1)
+		assert.Equal(t, "acct-3", selected[0].Username)
+	})
+
+	t.Run("maps hour 0 to all matching IDs for target 1", func(t *testing.T) {
+		selected := selectAccountsForHour(accounts, 0)
+		require.Len(t, selected, 2)
+		assert.Equal(t, "acct-0", selected[0].Username)
+		assert.Equal(t, "acct-24", selected[1].Username)
+	})
+}
+
 func TestProcessAccountSwallowsNonSessionErrors(t *testing.T) {
 	client := &fakeInstagramClient{getFn: func(url string) ([]byte, error) {
 		if strings.Contains(url, igFeedBase) {

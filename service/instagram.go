@@ -57,9 +57,30 @@ type igStory struct {
 }
 
 var sleepFn = time.Sleep
+var hourFn = func() int { return time.Now().Hour() }
 
 func init() {
 	rand.Seed(time.Now().UnixNano())
+}
+
+func selectAccountsForHour(accounts []repository.InstagramAccount, hour int) []repository.InstagramAccount {
+	if len(accounts) == 0 {
+		return nil
+	}
+
+	bucketCount := 24
+	if len(accounts) < bucketCount {
+		bucketCount = len(accounts)
+	}
+
+	selected := make([]repository.InstagramAccount, 0)
+	target := (hour + 1) % bucketCount
+	for _, account := range accounts {
+		if account.ID%bucketCount == target {
+			selected = append(selected, account)
+		}
+	}
+	return selected
 }
 
 func randomDuration(min, max time.Duration) time.Duration {
@@ -78,6 +99,12 @@ func (s *InstagramServiceImpl) Run() {
 		accounts, err := s.InstagramAccountRepo.GetAll()
 		if err != nil {
 			log.Println("[ERROR] fetching instagram accounts:", err)
+			return
+		}
+
+		accounts = selectAccountsForHour(accounts, hourFn())
+		if len(accounts) == 0 {
+			log.Println("[INFO] no Instagram accounts selected for this hour")
 			return
 		}
 
