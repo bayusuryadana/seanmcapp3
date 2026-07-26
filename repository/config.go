@@ -77,7 +77,7 @@ func (r *ConfigRepoImpl) SetValues(values map[string]string) error {
 	}
 
 	query := fmt.Sprintf(
-		"INSERT INTO app_config (key, value) VALUES %s ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()",
+		"INSERT INTO app_config (key, value) VALUES %s ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value",
 		strings.Join(placeholders, ", "),
 	)
 	_, err := r.DB.Exec(query, args...)
