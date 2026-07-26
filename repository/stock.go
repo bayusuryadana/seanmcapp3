@@ -10,7 +10,7 @@ type Stock struct {
 	BestPrice    int64  `db:"best_price"`
 	CurrentPrice *int64 `db:"current_price"`
 	FairPrice    int64  `db:"fair_price"`
-	Status       bool   `db:"status"` // 0 -> wishlist, 1 -> bought
+	Status       bool   `db:"status"`
 	BuyPrice     *int64 `db:"buy_price"`
 	Lot          *int64 `db:"lot"`
 }

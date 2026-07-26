@@ -4,9 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"sync"
+
 	http "github.com/bogdanfinn/fhttp"
 	tls_client "github.com/bogdanfinn/tls-client"
-	"github.com/bogdanfinn/tls-client/profiles"
 )
 
 const (
@@ -14,52 +15,45 @@ const (
 	igUserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36"
 )
 
-// ErrSessionExpired is returned when Instagram rejects the request with 401/403,
-// which usually means the configured IG_SESSION_ID is no longer valid.
-var ErrSessionExpired = errors.New("instagram session expired or blocked — please update IG_SESSION_ID")
+var ErrSessionExpired = errors.New("instagram session expired or blocked")
 
 type InstagramClient interface {
+	SetCredentials(sessionID, csrfToken string)
 	Get(url string) ([]byte, error)
 }
 
 type InstagramClientImpl struct {
-	SessionID string
-	CSRFToken string
-	client    tls_client.HttpClient
+	sessionID string
+	csrfToken string
+	Client    tls_client.HttpClient
+	mu        sync.RWMutex
 }
 
-func NewInstagramClient(sessionID, csrfToken string) *InstagramClientImpl {
-	jar := tls_client.NewCookieJar()
-	client, err := tls_client.NewHttpClient(tls_client.NewNoopLogger(),
-		tls_client.WithTimeoutSeconds(15),
-		tls_client.WithClientProfile(profiles.Chrome_144),
-		tls_client.WithNotFollowRedirects(),
-		tls_client.WithCookieJar(jar),
-	)
-	if err != nil {
-		panic(fmt.Sprintf("failed to create tls client: %v", err))
-	}
-
-	return &InstagramClientImpl{
-		SessionID: sessionID,
-		CSRFToken: csrfToken,
-		client:    client,
-	}
+func (c *InstagramClientImpl) SetCredentials(sessionID, csrfToken string) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.sessionID = sessionID
+	c.csrfToken = csrfToken
 }
 
 func (c *InstagramClientImpl) Get(url string) ([]byte, error) {
+	c.mu.RLock()
+	sessionID := c.sessionID
+	csrfToken := c.csrfToken
+	c.mu.RUnlock()
+
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, err
 	}
 
-	req.Header.Set("Cookie", fmt.Sprintf("sessionid=%s; csrftoken=%s", c.SessionID, c.CSRFToken))
-	req.Header.Set("X-CSRFToken", c.CSRFToken)
+	req.Header.Set("Cookie", fmt.Sprintf("sessionid=%s; csrftoken=%s", sessionID, csrfToken))
+	req.Header.Set("X-CSRFToken", csrfToken)
 	req.Header.Set("X-IG-App-ID", igAppID)
 	req.Header.Set("Referer", "https://www.instagram.com/")
 	req.Header.Set("User-Agent", igUserAgent)
 
-	resp, err := c.client.Do(req)
+	resp, err := c.Client.Do(req)
 	if err != nil {
 		return nil, err
 	}

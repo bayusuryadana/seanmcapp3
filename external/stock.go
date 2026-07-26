@@ -14,11 +14,7 @@ type StockClient interface {
 }
 
 type StockClientImpl struct {
-	client *http.Client
-}
-
-func NewStockClient() *StockClientImpl {
-	return &StockClientImpl{client: newHTTPClient()}
+	Client *http.Client
 }
 
 var stockURLTemplate = "https://query1.finance.yahoo.com/v8/finance/chart/{{name}}.jk"
@@ -34,7 +30,7 @@ func (s *StockClientImpl) GetPrice(name string) (int64, error) {
 	}
 	req.Header.Set("User-Agent", browserUserAgent)
 
-	resp, err := s.client.Do(req)
+	resp, err := s.Client.Do(req)
 	if err != nil {
 		return 0, fmt.Errorf("cannot fetch stock data: %w", err)
 	}
@@ -52,4 +48,3 @@ func (s *StockClientImpl) GetPrice(name string) (int64, error) {
 
 	return regularMarketPrice.Int(), nil
 }
-

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"seanmcapp/external"
 	"seanmcapp/repository"
 	"seanmcapp/service"
 	"seanmcapp/util"
@@ -14,6 +15,16 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+type fakeTelegramUpdateHandler struct {
+	update external.TelegramUpdate
+	err    error
+}
+
+func (f *fakeTelegramUpdateHandler) HandleUpdate(update external.TelegramUpdate) error {
+	f.update = update
+	return f.err
+}
 
 func TestMain(m *testing.M) {
 	gin.SetMode(gin.TestMode)
@@ -70,6 +81,51 @@ func TestHandleJSON(t *testing.T) {
 	})
 }
 
+func TestTelegramWebhookHandler(t *testing.T) {
+	t.Run("passes update to command service", func(t *testing.T) {
+		updateHandler := &fakeTelegramUpdateHandler{}
+		r := gin.New()
+		r.POST("/webhook", telegramWebhookHandler(updateHandler))
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader(
+			`{"update_id":123,"message":{"chat":{"id":42,"type":"private"},"text":"change session csrf"}}`,
+		))
+		req.Header.Set("Content-Type", "application/json")
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusOK, w.Code)
+		assert.Equal(t, int64(123), updateHandler.update.UpdateID)
+		require.NotNil(t, updateHandler.update.Message)
+		require.NotNil(t, updateHandler.update.Message.Text)
+		assert.Equal(t, "change session csrf", *updateHandler.update.Message.Text)
+	})
+
+	t.Run("rejects invalid payload", func(t *testing.T) {
+		r := gin.New()
+		r.POST("/webhook", telegramWebhookHandler(&fakeTelegramUpdateHandler{}))
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader(`not-json`))
+		req.Header.Set("Content-Type", "application/json")
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusBadRequest, w.Code)
+	})
+
+	t.Run("reports command failure", func(t *testing.T) {
+		r := gin.New()
+		r.POST("/webhook", telegramWebhookHandler(&fakeTelegramUpdateHandler{err: errors.New("boom")}))
+
+		w := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/webhook", strings.NewReader(`{"update_id":123}`))
+		req.Header.Set("Content-Type", "application/json")
+		r.ServeHTTP(w, req)
+
+		assert.Equal(t, http.StatusInternalServerError, w.Code)
+	})
+}
+
 func TestAuthMiddleware(t *testing.T) {
 	settings := util.WalletSettings{SecretKey: "secret", Password: "pw"}
 	token := util.JwtCreateToken(settings, "pw")
@@ -97,7 +153,6 @@ func TestAuthMiddleware(t *testing.T) {
 	})
 
 	t.Run("preflight OPTIONS passes through", func(t *testing.T) {
-		// Invoke the middleware directly: gin routing wouldn't match OPTIONS to a GET route.
 		w := httptest.NewRecorder()
 		c, _ := gin.CreateTestContext(w)
 		c.Request = httptest.NewRequest(http.MethodOptions, "/protected", nil)
@@ -107,10 +162,8 @@ func TestAuthMiddleware(t *testing.T) {
 }
 
 func TestServeIndexMissingFile(t *testing.T) {
-	// The frontend build isn't present in the test working directory.
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 	serveIndex(c)
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 }
-

@@ -3,6 +3,8 @@ package bootstrap
 import (
 	"log"
 	"net/http"
+	"seanmcapp/external"
+	"seanmcapp/service"
 	"seanmcapp/util"
 	"strconv"
 	"time"
@@ -23,17 +25,13 @@ func InitRouter(mainServices MainServices, walletSettings util.WalletSettings) *
 		MaxAge:           12 * time.Hour,
 	}))
 
-	// Frontend routes
 	r.GET("/", serveIndex)
 	r.Static("/static", util.GetFrontendPath()+"/static")
 	r.NoRoute(serveIndex)
 
-	// API routes
 	api := r.Group("/api")
 	{
-		api.POST("/webhook", func(c *gin.Context) {
-			c.JSON(http.StatusOK, gin.H{"status": "ok"})
-		})
+		api.POST("/webhook", telegramWebhookHandler(mainServices.TelegramUpdateHandler))
 
 		wallet := api.Group("/wallet")
 		{
@@ -103,6 +101,24 @@ func InitRouter(mainServices MainServices, walletSettings util.WalletSettings) *
 	}
 
 	return r
+}
+
+func telegramWebhookHandler(updateHandler service.TelegramUpdateHandler) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var update external.TelegramUpdate
+		if err := c.ShouldBindJSON(&update); err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Telegram update"})
+			return
+		}
+		if updateHandler != nil {
+			if err := updateHandler.HandleUpdate(update); err != nil {
+				log.Printf("[ERROR] handling Telegram update %d: %v", update.UpdateID, err)
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not handle Telegram update"})
+				return
+			}
+		}
+		c.JSON(http.StatusOK, gin.H{"status": "ok"})
+	}
 }
 
 func safeRun(fn func()) {

@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"seanmcapp/external"
 	"strings"
-	"time"
 
 	"github.com/PuerkitoBio/goquery"
 )
@@ -20,32 +19,16 @@ type NewsService interface {
 type NewsServiceImpl struct {
 	TelegramClient external.TelegramClient
 	GroupChatID    int64
-	httpClient     *http.Client
-	sources        []NewsObject
+	HTTPClient     *http.Client
+	Sources        []NewsObject
 	guard          runGuard
-}
-
-func NewNewsService(telegramClient external.TelegramClient, groupChatID int64) *NewsServiceImpl {
-	return &NewsServiceImpl{
-		TelegramClient: telegramClient,
-		GroupChatID:    groupChatID,
-		httpClient:     &http.Client{Timeout: 15 * time.Second},
-		sources: []NewsObject{
-			Detik{},
-			Tirtol{},
-			Kumparan{},
-			CNA{},
-			Mothership{},
-			Reuters{},
-		},
-	}
 }
 
 func (s *NewsServiceImpl) Run() {
 	s.guard.run("news run", func() {
 		var results []NewsResult
 
-		for _, news := range s.sources {
+		for _, news := range s.Sources {
 			result, err := s.fetchNews(news)
 			if err != nil {
 				log.Printf("[ERROR] %s: %v\n", news.Name(), err)
@@ -68,7 +51,7 @@ func (s *NewsServiceImpl) Run() {
 }
 
 func (s *NewsServiceImpl) fetchNews(news NewsObject) (NewsResult, error) {
-	resp, err := s.httpClient.Get(news.URL())
+	resp, err := s.HTTPClient.Get(news.URL())
 	if err != nil {
 		return NewsResult{}, fmt.Errorf("fetching: %w", err)
 	}

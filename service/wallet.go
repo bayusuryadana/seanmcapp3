@@ -46,7 +46,7 @@ func (s *WalletServiceImpl) Dashboard(date int) (*DashboardView, error) {
 				case "DBS":
 					ytdExpenses[w.Category] -= w.Amount
 				case "BCA":
-					currExchange := w.Amount / 12700 // need to change every year
+					currExchange := w.Amount / 12700
 					ytdExpenses[w.Category] -= currExchange
 				}
 			}
@@ -59,7 +59,6 @@ func (s *WalletServiceImpl) Dashboard(date int) (*DashboardView, error) {
 		return nil, err
 	}
 
-	// fixed order
 	var alloc []DashboardAllocations
 	for _, cat := range expenseCategories {
 		alloc = append(alloc, DashboardAllocations{

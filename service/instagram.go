@@ -21,8 +21,6 @@ const (
 	igStoryBase   = "https://www.instagram.com/stories/"
 	igMaxPosts    = 9
 
-	// igMaxUploadBytes is Telegram's bot multipart upload ceiling. Videos larger
-	// than this fall back to a thumbnail with a link.
 	igMaxUploadBytes = 50 * 1024 * 1024
 )
 
@@ -32,6 +30,7 @@ type InstagramService interface {
 
 type InstagramServiceImpl struct {
 	InstagramAccountRepo repository.InstagramAccountRepo
+	ConfigRepo           repository.ConfigRepo
 	InstagramClient      external.InstagramClient
 	TelegramClient       external.TelegramClient
 	PersonalChatID       int64
@@ -96,6 +95,11 @@ func sleepRandom(min, max time.Duration) {
 
 func (s *InstagramServiceImpl) Run() {
 	s.guard.run("instagram run", func() {
+		if err := s.refreshCredentials(); err != nil {
+			log.Printf("[ERROR] loading Instagram credentials: %v", err)
+			return
+		}
+
 		accounts, err := s.InstagramAccountRepo.GetAll()
 		if err != nil {
 			log.Println("[ERROR] fetching instagram accounts:", err)
@@ -108,7 +112,6 @@ func (s *InstagramServiceImpl) Run() {
 			return
 		}
 
-		// Add a small random delay before the whole account loop runs.
 		sleepRandom(30*time.Second, 90*time.Second)
 
 		for i, account := range accounts {
@@ -119,9 +122,8 @@ func (s *InstagramServiceImpl) Run() {
 			log.Printf("Checking Instagram account: %s", account.Username)
 
 			if errors.Is(s.processAccount(account), external.ErrSessionExpired) {
-				// Every account will fail the same way, so alert once and stop the run.
 				log.Printf("[ERROR] instagram session expired while checking %s", account.Username)
-				if _, sendErr := s.TelegramClient.SendMessage(s.PersonalChatID, "⚠️ Instagram session expired — please update *IG_SESSION_ID*."); sendErr != nil {
+				if _, sendErr := s.TelegramClient.SendMessage(s.PersonalChatID, "⚠️ Instagram session expired. Send `change <session_id> <csrf_token>` to update it."); sendErr != nil {
 					log.Printf("[ERROR] sending session-expired alert: %v", sendErr)
 				}
 				return
@@ -132,9 +134,33 @@ func (s *InstagramServiceImpl) Run() {
 	})
 }
 
-// processAccount resolves the id and processes posts then stories for one account.
-// It returns ErrSessionExpired if any call indicates the session is no longer valid;
-// all other errors are logged internally and swallowed.
+func (s *InstagramServiceImpl) refreshCredentials() error {
+	if s.ConfigRepo == nil {
+		return nil
+	}
+
+	values, err := s.ConfigRepo.GetValues(
+		repository.ConfigKeyIGSessionID,
+		repository.ConfigKeyIGCSRFToken,
+	)
+	if err != nil {
+		return err
+	}
+
+	sessionID := values[repository.ConfigKeyIGSessionID]
+	csrfToken := values[repository.ConfigKeyIGCSRFToken]
+	if sessionID == "" || csrfToken == "" {
+		return fmt.Errorf(
+			"missing %q or %q in app_config",
+			repository.ConfigKeyIGSessionID,
+			repository.ConfigKeyIGCSRFToken,
+		)
+	}
+
+	s.InstagramClient.SetCredentials(sessionID, csrfToken)
+	return nil
+}
+
 func (s *InstagramServiceImpl) processAccount(account repository.InstagramAccount) error {
 	userID, err := s.resolveUserID(account)
 	if err != nil {
@@ -154,7 +180,6 @@ func (s *InstagramServiceImpl) processAccount(account repository.InstagramAccoun
 	return nil
 }
 
-// processPosts fetches, notifies and persists the latest posts for an account.
 func (s *InstagramServiceImpl) processPosts(account repository.InstagramAccount, userID string) error {
 	posts, err := s.fetchLatestPosts(account.Username, userID)
 	if err != nil {
@@ -182,7 +207,6 @@ func (s *InstagramServiceImpl) processPosts(account repository.InstagramAccount,
 	return nil
 }
 
-// processStories fetches, notifies and persists the latest stories for an account.
 func (s *InstagramServiceImpl) processStories(account repository.InstagramAccount, userID string) error {
 	stories, err := s.fetchLatestStories(account.Username, userID)
 	if err != nil {
@@ -210,8 +234,6 @@ func (s *InstagramServiceImpl) processStories(account repository.InstagramAccoun
 	return nil
 }
 
-// resolveUserID returns the account's numeric id, resolving it from the profile
-// endpoint and persisting it the first time it is seen.
 func (s *InstagramServiceImpl) resolveUserID(account repository.InstagramAccount) (string, error) {
 	if account.UserID != "" {
 		return account.UserID, nil
@@ -266,9 +288,6 @@ func (s *InstagramServiceImpl) fetchLatestPosts(username, userID string) ([]igPo
 	return posts, nil
 }
 
-// extractMedia flattens a feed item into its individual media pieces, handling
-// single images (media_type 1), videos/reels (media_type 2) and carousels /
-// albums (media_type 8, whose children each carry their own media_type).
 func extractMedia(item gjson.Result) []igMedia {
 	if item.Get("media_type").Int() == 8 {
 		var media []igMedia
@@ -304,22 +323,18 @@ func singleMedia(node gjson.Result) (igMedia, bool) {
 	return igMedia{IsVideo: false, URL: thumb}, true
 }
 
-// fetchLatestStories returns the account's currently active story items. An
-// account with no active story yields an empty slice (not an error).
 func (s *InstagramServiceImpl) fetchLatestStories(username, userID string) ([]igStory, error) {
 	body, err := s.InstagramClient.Get(igStoriesBase + userID)
 	if err != nil {
 		return nil, err
 	}
 
-	// The reels_media endpoint returns items under reels_media[0].items; some
-	// responses instead key them under reels.<userID>.items. Accept either.
 	items := gjson.GetBytes(body, "reels_media.0.items")
 	if !items.Exists() {
 		items = gjson.GetBytes(body, "reels."+userID+".items")
 	}
 	if !items.Exists() {
-		return nil, nil // no active story reel
+		return nil, nil
 	}
 
 	var stories []igStory
@@ -425,8 +440,6 @@ func (s *InstagramServiceImpl) sendMedia(username, shortcode, postLink string, i
 	s.sendVideo(username, shortcode, postLink, index, m)
 }
 
-// sendVideo tries the cheap URL-based send first, then falls back to downloading
-// and multipart-uploading (up to 50MB), and finally to a thumbnail + link note.
 func (s *InstagramServiceImpl) sendVideo(username, shortcode, postLink string, index int, m igMedia) {
 	if resp, err := s.TelegramClient.SendVideo(s.PersonalChatID, m.URL, ""); err == nil && resp.Ok {
 		return
@@ -463,8 +476,6 @@ func (s *InstagramServiceImpl) sendVideoFallback(username, shortcode, postLink s
 	}
 }
 
-// escapeMarkdown neutralises the legacy Telegram markdown control characters so
-// an arbitrary Instagram caption cannot break the summary message formatting.
 func escapeMarkdown(s string) string {
 	replacer := strings.NewReplacer(
 		"_", "\\_",

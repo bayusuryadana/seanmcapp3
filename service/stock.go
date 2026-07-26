@@ -47,12 +47,10 @@ func (s *StockServiceImpl) Run() {
 			continue
 		}
 
-		// status = 0 and current_price <= best_price
 		if stock.Status == false && *stock.CurrentPrice <= stock.BestPrice {
 			result = append(result, fmt.Sprintf("%s hitting best price", stock.Name))
 		}
 
-		// status = 1 and current_price >= fair_price
 		if stock.Status == true && *stock.CurrentPrice >= stock.FairPrice {
 			result = append(result, fmt.Sprintf("%s reaching fair price", stock.Name))
 		}
@@ -160,4 +158,3 @@ type DashboardStock struct {
 	BuyPrice     *int64 `json:"buy_price,omitempty"`
 	Lot          *int64 `json:"lot,omitempty"`
 }
-
