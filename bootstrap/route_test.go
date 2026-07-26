@@ -101,7 +101,7 @@ func TestTelegramWebhookHandler(t *testing.T) {
 		assert.Equal(t, "change session csrf", *updateHandler.update.Message.Text)
 	})
 
-	t.Run("rejects invalid payload", func(t *testing.T) {
+	t.Run("acknowledges invalid payload", func(t *testing.T) {
 		r := gin.New()
 		r.POST("/webhook", telegramWebhookHandler(&fakeTelegramUpdateHandler{}))
 
@@ -110,10 +110,10 @@ func TestTelegramWebhookHandler(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		r.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusBadRequest, w.Code)
+		assert.Equal(t, http.StatusOK, w.Code)
 	})
 
-	t.Run("reports command failure", func(t *testing.T) {
+	t.Run("acknowledges command failure", func(t *testing.T) {
 		r := gin.New()
 		r.POST("/webhook", telegramWebhookHandler(&fakeTelegramUpdateHandler{err: errors.New("boom")}))
 
@@ -122,7 +122,7 @@ func TestTelegramWebhookHandler(t *testing.T) {
 		req.Header.Set("Content-Type", "application/json")
 		r.ServeHTTP(w, req)
 
-		assert.Equal(t, http.StatusInternalServerError, w.Code)
+		assert.Equal(t, http.StatusOK, w.Code)
 	})
 }
 

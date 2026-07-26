@@ -107,14 +107,13 @@ func telegramWebhookHandler(updateHandler service.TelegramUpdateHandler) gin.Han
 	return func(c *gin.Context) {
 		var update external.TelegramUpdate
 		if err := c.ShouldBindJSON(&update); err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid Telegram update"})
+			log.Printf("[ERROR] decoding Telegram update: %v", err)
+			c.JSON(http.StatusOK, gin.H{"status": "ok"})
 			return
 		}
 		if updateHandler != nil {
 			if err := updateHandler.HandleUpdate(update); err != nil {
 				log.Printf("[ERROR] handling Telegram update %d: %v", update.UpdateID, err)
-				c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not handle Telegram update"})
-				return
 			}
 		}
 		c.JSON(http.StatusOK, gin.H{"status": "ok"})
