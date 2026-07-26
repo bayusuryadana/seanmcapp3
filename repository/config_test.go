@@ -45,7 +45,7 @@ func TestConfigSetValues(t *testing.T) {
 	repo := &ConfigRepoImpl{DB: db}
 
 	query := "INSERT INTO app_config (key, value) VALUES ($1, $2), ($3, $4) " +
-		"ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()"
+		"ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value"
 	mock.ExpectExec(regexp.QuoteMeta(query)).
 		WithArgs(ConfigKeyIGCSRFToken, "csrf", ConfigKeyIGSessionID, "session").
 		WillReturnResult(sqlmock.NewResult(0, 2))
