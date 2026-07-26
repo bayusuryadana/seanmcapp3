@@ -38,7 +38,7 @@ func JwtValidateToken(walletSettings WalletSettings, token string) bool {
 		func(t *jwt.Token) (interface{}, error) {
 			return []byte(walletSettings.SecretKey), nil
 		},
-		jwt.WithValidMethods([]string{"HS256"}), // pin the algorithm; reject anything else
+		jwt.WithValidMethods([]string{"HS256"}),
 	)
 
 	if err != nil {
@@ -51,4 +51,3 @@ func JwtValidateToken(walletSettings WalletSettings, token string) bool {
 
 	return false
 }
-

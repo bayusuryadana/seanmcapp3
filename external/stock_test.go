@@ -22,7 +22,7 @@ func TestStockGetPrice(t *testing.T) {
 	defer srv.Close()
 	defer withStockURL(srv.URL + "/{{name}}")()
 
-	price, err := NewStockClient().GetPrice("BBCA")
+	price, err := (&StockClientImpl{Client: srv.Client()}).GetPrice("BBCA")
 	require.NoError(t, err)
 	assert.Equal(t, int64(1234), price)
 }
@@ -34,7 +34,7 @@ func TestStockGetPriceNotFound(t *testing.T) {
 	defer srv.Close()
 	defer withStockURL(srv.URL + "/{{name}}")()
 
-	_, err := NewStockClient().GetPrice("BBCA")
+	_, err := (&StockClientImpl{Client: srv.Client()}).GetPrice("BBCA")
 	assert.Error(t, err)
 }
 
@@ -44,6 +44,6 @@ func TestStockGetPriceRequestError(t *testing.T) {
 	srv.Close()
 	defer withStockURL(url + "/{{name}}")()
 
-	_, err := NewStockClient().GetPrice("BBCA")
+	_, err := (&StockClientImpl{Client: srv.Client()}).GetPrice("BBCA")
 	assert.Error(t, err)
 }

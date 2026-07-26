@@ -5,8 +5,6 @@ import (
 	"seanmcapp/repository"
 )
 
-// ---- WalletRepo fake ----
-
 type fakeWalletRepo struct {
 	getAllFn         func() ([]repository.Wallet, error)
 	getAllocationsFn func() (map[string]int, error)
@@ -21,15 +19,13 @@ func (f *fakeWalletRepo) Insert(w repository.Wallet) (int, error) { return f.ins
 func (f *fakeWalletRepo) Update(w repository.Wallet) (int, error) { return f.updateFn(w) }
 func (f *fakeWalletRepo) Delete(id int) (int, error)              { return f.deleteFn(id) }
 
-// ---- StockRepo fake ----
-
 type fakeStockRepo struct {
 	getAllFn func() ([]repository.Stock, error)
 	createFn func(repository.Stock) (string, error)
 	updateFn func(repository.Stock) (string, error)
 	deleteFn func(string) (string, error)
 
-	updated []repository.Stock // records Update calls
+	updated []repository.Stock
 }
 
 func (f *fakeStockRepo) GetAll() ([]repository.Stock, error) { return f.getAllFn() }
@@ -44,8 +40,6 @@ func (f *fakeStockRepo) Update(s repository.Stock) (string, error) {
 	return s.Name, nil
 }
 func (f *fakeStockRepo) Delete(name string) (string, error) { return f.deleteFn(name) }
-
-// ---- InstagramAccountRepo fake ----
 
 type fakeInstagramRepo struct {
 	getAllFn func() ([]repository.InstagramAccount, error)
@@ -84,7 +78,34 @@ func (f *fakeInstagramRepo) UpdateLastStoryIDs(username, storyIDs string) error 
 	return nil
 }
 
-// ---- StockClient fake ----
+type fakeConfigRepo struct {
+	values   map[string]string
+	getErr   error
+	setErr   error
+	getCalls [][]string
+	setCalls []map[string]string
+}
+
+func (f *fakeConfigRepo) GetValues(keys ...string) (map[string]string, error) {
+	f.getCalls = append(f.getCalls, append([]string(nil), keys...))
+	if f.getErr != nil {
+		return nil, f.getErr
+	}
+	result := make(map[string]string, len(keys))
+	for _, key := range keys {
+		result[key] = f.values[key]
+	}
+	return result, nil
+}
+
+func (f *fakeConfigRepo) SetValues(values map[string]string) error {
+	copied := make(map[string]string, len(values))
+	for key, value := range values {
+		copied[key] = value
+	}
+	f.setCalls = append(f.setCalls, copied)
+	return f.setErr
+}
 
 type fakeStockClient struct {
 	prices map[string]int64
@@ -99,8 +120,6 @@ func (f *fakeStockClient) GetPrice(name string) (int64, error) {
 	}
 	return f.prices[name], nil
 }
-
-// ---- TelegramClient fake ----
 
 type telegramMessage struct {
 	chatID int64
@@ -133,8 +152,8 @@ type fakeTelegramClient struct {
 	uploads  []telegramVideoUpload
 	err      error
 
-	videoURLFails bool // when true, SendVideo responds Ok=false (simulates >20MB)
-	uploadFails   bool // when true, SendVideoUpload responds Ok=false
+	videoURLFails bool
+	uploadFails   bool
 }
 
 func (f *fakeTelegramClient) SendMessage(chatID int64, text string) (external.TelegramResponse, error) {
@@ -157,10 +176,17 @@ func (f *fakeTelegramClient) SendVideoUpload(chatID int64, data []byte, filename
 	return external.TelegramResponse{Ok: !f.uploadFails}, f.err
 }
 
-// ---- InstagramClient fake ----
-
 type fakeInstagramClient struct {
-	getFn func(url string) ([]byte, error)
+	getFn       func(url string) ([]byte, error)
+	sessionID   string
+	csrfToken   string
+	setCredsRun int
+}
+
+func (f *fakeInstagramClient) SetCredentials(sessionID, csrfToken string) {
+	f.sessionID = sessionID
+	f.csrfToken = csrfToken
+	f.setCredsRun++
 }
 
 func (f *fakeInstagramClient) Get(url string) ([]byte, error) { return f.getFn(url) }

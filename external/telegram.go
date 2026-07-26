@@ -12,8 +12,7 @@ import (
 	"time"
 )
 
-// uploadTimeout is generous because a multipart video upload can push tens of MB.
-const uploadTimeout = 120 * time.Second
+const TelegramUploadTimeout = 120 * time.Second
 
 type TelegramClient interface {
 	SendMessage(chatId int64, text string) (TelegramResponse, error)
@@ -25,24 +24,15 @@ type TelegramClient interface {
 type TelegramClientImpl struct {
 	Endpoint     string
 	Botname      string
-	client       *http.Client
-	uploadClient *http.Client
-}
-
-func NewTelegramClient(endpoint, botname string) *TelegramClientImpl {
-	return &TelegramClientImpl{
-		Endpoint:     endpoint,
-		Botname:      botname,
-		client:       newHTTPClient(),
-		uploadClient: &http.Client{Timeout: uploadTimeout},
-	}
+	Client       *http.Client
+	UploadClient *http.Client
 }
 
 func (t *TelegramClientImpl) SendMessage(chatId int64, text string) (TelegramResponse, error) {
 	sanitized := url.QueryEscape(text)
 	reqURL := fmt.Sprintf("%s/sendmessage?chat_id=%d&text=%s&parse_mode=markdown&disable_web_page_preview=true&disable_notification=true", t.Endpoint, chatId, sanitized)
 
-	resp, err := t.client.Get(reqURL)
+	resp, err := t.Client.Get(reqURL)
 	if err != nil {
 		log.Println("Failed to send telegram message", err)
 		return TelegramResponse{}, err
@@ -62,7 +52,7 @@ func (t *TelegramClientImpl) SendPhoto(chatId int64, photoURL, caption string) (
 	sanitized := url.QueryEscape(caption)
 	reqURL := fmt.Sprintf("%s/sendphoto?chat_id=%d&photo=%s&caption=%s&parse_mode=markdown&disable_notification=true", t.Endpoint, chatId, url.QueryEscape(photoURL), sanitized)
 
-	resp, err := t.client.Get(reqURL)
+	resp, err := t.Client.Get(reqURL)
 	if err != nil {
 		log.Println("Failed to send telegram photo", err)
 		return TelegramResponse{}, err
@@ -78,13 +68,10 @@ func (t *TelegramClientImpl) SendPhoto(chatId int64, photoURL, caption string) (
 	return telegramResp, nil
 }
 
-// SendVideo asks Telegram to fetch the video from a remote URL. Telegram caps
-// remote-URL videos at ~20MB; larger files come back with Ok=false and should be
-// retried via SendVideoUpload.
 func (t *TelegramClientImpl) SendVideo(chatId int64, videoURL, caption string) (TelegramResponse, error) {
 	reqURL := fmt.Sprintf("%s/sendvideo?chat_id=%d&video=%s&caption=%s&parse_mode=markdown&disable_notification=true", t.Endpoint, chatId, url.QueryEscape(videoURL), url.QueryEscape(caption))
 
-	resp, err := t.client.Get(reqURL)
+	resp, err := t.Client.Get(reqURL)
 	if err != nil {
 		log.Println("Failed to send telegram video", err)
 		return TelegramResponse{}, err
@@ -99,8 +86,6 @@ func (t *TelegramClientImpl) SendVideo(chatId int64, videoURL, caption string) (
 	return telegramResp, nil
 }
 
-// SendVideoUpload multipart-uploads the raw video bytes. This raises the size
-// ceiling to Telegram's 50MB bot upload limit.
 func (t *TelegramClientImpl) SendVideoUpload(chatId int64, data []byte, filename, caption string) (TelegramResponse, error) {
 	var body bytes.Buffer
 	writer := multipart.NewWriter(&body)
@@ -128,7 +113,7 @@ func (t *TelegramClientImpl) SendVideoUpload(chatId int64, data []byte, filename
 	}
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 
-	resp, err := t.uploadClient.Do(req)
+	resp, err := t.UploadClient.Do(req)
 	if err != nil {
 		log.Println("Failed to upload telegram video", err)
 		return TelegramResponse{}, err
@@ -146,6 +131,11 @@ func (t *TelegramClientImpl) SendVideoUpload(chatId int64, data []byte, filename
 type TelegramResponse struct {
 	Ok     bool           `json:"ok"`
 	Result TelegramResult `json:"result"`
+}
+
+type TelegramUpdate struct {
+	UpdateID int64           `json:"update_id"`
+	Message  *TelegramResult `json:"message"`
 }
 
 type TelegramResult struct {

@@ -16,7 +16,7 @@ func TestTelegramSendMessage(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewTelegramClient(srv.URL, "bot")
+	c := &TelegramClientImpl{Endpoint: srv.URL, Botname: "bot", Client: srv.Client(), UploadClient: srv.Client()}
 	resp, err := c.SendMessage(5, "hello")
 	require.NoError(t, err)
 	assert.True(t, resp.Ok)
@@ -30,7 +30,7 @@ func TestTelegramSendPhoto(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewTelegramClient(srv.URL, "bot")
+	c := &TelegramClientImpl{Endpoint: srv.URL, Botname: "bot", Client: srv.Client(), UploadClient: srv.Client()}
 	resp, err := c.SendPhoto(5, "http://img/1", "caption")
 	require.NoError(t, err)
 	assert.True(t, resp.Ok)
@@ -42,7 +42,7 @@ func TestTelegramDecodeError(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	c := NewTelegramClient(srv.URL, "bot")
+	c := &TelegramClientImpl{Endpoint: srv.URL, Botname: "bot", Client: srv.Client(), UploadClient: srv.Client()}
 	_, err := c.SendMessage(5, "hello")
 	assert.Error(t, err)
 }
@@ -50,9 +50,9 @@ func TestTelegramDecodeError(t *testing.T) {
 func TestTelegramRequestError(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 	url := srv.URL
-	srv.Close() // server no longer listening -> request fails
+	srv.Close()
 
-	c := NewTelegramClient(url, "bot")
+	c := &TelegramClientImpl{Endpoint: url, Botname: "bot", Client: srv.Client(), UploadClient: srv.Client()}
 	_, err := c.SendMessage(5, "hello")
 	assert.Error(t, err)
 }
@@ -63,7 +63,8 @@ func TestTelegramSendPhotoErrors(t *testing.T) {
 			_, _ = w.Write([]byte(`not-json`))
 		}))
 		defer srv.Close()
-		_, err := NewTelegramClient(srv.URL, "bot").SendPhoto(5, "http://img", "cap")
+		client := &TelegramClientImpl{Endpoint: srv.URL, Botname: "bot", Client: srv.Client(), UploadClient: srv.Client()}
+		_, err := client.SendPhoto(5, "http://img", "cap")
 		assert.Error(t, err)
 	})
 
@@ -71,7 +72,8 @@ func TestTelegramSendPhotoErrors(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 		url := srv.URL
 		srv.Close()
-		_, err := NewTelegramClient(url, "bot").SendPhoto(5, "http://img", "cap")
+		client := &TelegramClientImpl{Endpoint: url, Botname: "bot", Client: srv.Client(), UploadClient: srv.Client()}
+		_, err := client.SendPhoto(5, "http://img", "cap")
 		assert.Error(t, err)
 	})
 }
@@ -84,7 +86,8 @@ func TestTelegramSendVideo(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	resp, err := NewTelegramClient(srv.URL, "bot").SendVideo(5, "http://vid/1", "cap")
+	client := &TelegramClientImpl{Endpoint: srv.URL, Botname: "bot", Client: srv.Client(), UploadClient: srv.Client()}
+	resp, err := client.SendVideo(5, "http://vid/1", "cap")
 	require.NoError(t, err)
 	assert.True(t, resp.Ok)
 	assert.Equal(t, 12, resp.Result.MessageID)
@@ -103,7 +106,8 @@ func TestTelegramSendVideoUpload(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	resp, err := NewTelegramClient(srv.URL, "bot").SendVideoUpload(5, []byte("bytes"), "clip.mp4", "cap")
+	client := &TelegramClientImpl{Endpoint: srv.URL, Botname: "bot", Client: srv.Client(), UploadClient: srv.Client()}
+	resp, err := client.SendVideoUpload(5, []byte("bytes"), "clip.mp4", "cap")
 	require.NoError(t, err)
 	assert.True(t, resp.Ok)
 	assert.Equal(t, 13, resp.Result.MessageID)
@@ -115,7 +119,8 @@ func TestTelegramSendVideoErrors(t *testing.T) {
 			_, _ = w.Write([]byte(`not-json`))
 		}))
 		defer srv.Close()
-		_, err := NewTelegramClient(srv.URL, "bot").SendVideo(5, "http://vid/1", "cap")
+		client := &TelegramClientImpl{Endpoint: srv.URL, Botname: "bot", Client: srv.Client(), UploadClient: srv.Client()}
+		_, err := client.SendVideo(5, "http://vid/1", "cap")
 		assert.Error(t, err)
 	})
 
@@ -123,7 +128,8 @@ func TestTelegramSendVideoErrors(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 		url := srv.URL
 		srv.Close()
-		_, err := NewTelegramClient(url, "bot").SendVideo(5, "http://vid/1", "cap")
+		client := &TelegramClientImpl{Endpoint: url, Botname: "bot", Client: srv.Client(), UploadClient: srv.Client()}
+		_, err := client.SendVideo(5, "http://vid/1", "cap")
 		assert.Error(t, err)
 	})
 }
@@ -134,7 +140,8 @@ func TestTelegramSendVideoUploadErrors(t *testing.T) {
 			_, _ = w.Write([]byte(`not-json`))
 		}))
 		defer srv.Close()
-		_, err := NewTelegramClient(srv.URL, "bot").SendVideoUpload(5, []byte("bytes"), "clip.mp4", "cap")
+		client := &TelegramClientImpl{Endpoint: srv.URL, Botname: "bot", Client: srv.Client(), UploadClient: srv.Client()}
+		_, err := client.SendVideoUpload(5, []byte("bytes"), "clip.mp4", "cap")
 		assert.Error(t, err)
 	})
 
@@ -142,8 +149,8 @@ func TestTelegramSendVideoUploadErrors(t *testing.T) {
 		srv := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {}))
 		url := srv.URL
 		srv.Close()
-		_, err := NewTelegramClient(url, "bot").SendVideoUpload(5, []byte("bytes"), "clip.mp4", "cap")
+		client := &TelegramClientImpl{Endpoint: url, Botname: "bot", Client: srv.Client(), UploadClient: srv.Client()}
+		_, err := client.SendVideoUpload(5, []byte("bytes"), "clip.mp4", "cap")
 		assert.Error(t, err)
 	})
 }
-

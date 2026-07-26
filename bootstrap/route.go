@@ -11,12 +11,9 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-
-// Auth Middleware
 func authMiddleware(walletSettings util.WalletSettings) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		if c.Request.Method == http.MethodOptions {
-			// Let preflight through
 			c.AbortWithStatus(http.StatusOK)
 			return
 		}
@@ -30,7 +27,6 @@ func authMiddleware(walletSettings util.WalletSettings) gin.HandlerFunc {
 	}
 }
 
-// Frontend handler
 func serveIndex(c *gin.Context) {
 	content, err := os.ReadFile(util.GetFrontendPath() + "/index.html")
 	if err != nil {

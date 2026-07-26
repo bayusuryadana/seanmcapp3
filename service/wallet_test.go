@@ -29,15 +29,12 @@ func TestWalletDashboard(t *testing.T) {
 	view, err := svc.Dashboard(202406)
 	require.NoError(t, err)
 
-	// Savings = sum of Done entries per account.
 	assert.Equal(t, 4850, view.Savings.DBS)
 	assert.Equal(t, -25400, view.Savings.BCA)
 
-	// Planned = entries whose date <= requested date.
 	assert.Equal(t, 4850, view.Planned.SGD)
 	assert.Equal(t, -25400, view.Planned.IDR)
 
-	// Allocations follow the fixed category order with expense (sign-flipped) and alloc.
 	expectedAlloc := []DashboardAllocations{
 		{Name: "Daily", Expense: 100, Alloc: 1000},
 		{Name: "Rent", Expense: 50, Alloc: 500},
@@ -50,7 +47,6 @@ func TestWalletDashboard(t *testing.T) {
 	}
 	assert.Equal(t, expectedAlloc, view.Allocations)
 
-	// Balance history: cumulative DBS totals up to the date, newest first.
 	expectedBalance := []DashboardBalance{
 		{Date: 202406, Sum: 4850},
 		{Date: 202405, Sum: 4900},
@@ -58,7 +54,6 @@ func TestWalletDashboard(t *testing.T) {
 	}
 	assert.Equal(t, expectedBalance, view.Chart.BalanceHistory)
 
-	// Detail wallets = entries matching exactly the requested date.
 	require.Len(t, view.Wallets, 2)
 	assert.Equal(t, "b", view.Wallets[0].Name)
 	assert.Equal(t, "c", view.Wallets[1].Name)

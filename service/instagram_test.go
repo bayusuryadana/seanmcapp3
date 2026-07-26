@@ -24,7 +24,7 @@ func TestDetectNewPosts(t *testing.T) {
 		name    string
 		stored  string
 		current []igPost
-		want    []string // shortcodes expected as "new"
+		want    []string
 	}{
 		{"no stored history returns nothing", "", []igPost{{Shortcode: "A"}}, nil},
 		{"one new post", "A,B", []igPost{{Shortcode: "A"}, {Shortcode: "B"}, {Shortcode: "C"}}, []string{"C"}},
@@ -226,7 +226,6 @@ func TestInstagramRun(t *testing.T) {
 	accountRepo := &fakeInstagramRepo{getAllFn: func() ([]repository.InstagramAccount, error) {
 		return []repository.InstagramAccount{{Username: "foo", LastShortcodes: "AAA,BBB"}}, nil
 	}}
-	// Feed returns exactly the stored shortcodes -> no new posts -> no photo, but shortcodes are persisted.
 	client := &fakeInstagramClient{getFn: func(url string) ([]byte, error) {
 		if strings.Contains(url, "web_profile_info") {
 			return []byte(igProfileJSON), nil
@@ -242,11 +241,76 @@ func TestInstagramRun(t *testing.T) {
 	assert.Equal(t, "AAA,BBB", accountRepo.updatedShortcodes["foo"])
 }
 
+func TestInstagramRunRefreshesCredentialsEveryTime(t *testing.T) {
+	configRepo := &fakeConfigRepo{values: map[string]string{
+		repository.ConfigKeyIGSessionID: "session-1",
+		repository.ConfigKeyIGCSRFToken: "csrf-1",
+	}}
+	accountRepo := &fakeInstagramRepo{getAllFn: func() ([]repository.InstagramAccount, error) {
+		return nil, nil
+	}}
+	client := &fakeInstagramClient{}
+	svc := &InstagramServiceImpl{
+		InstagramAccountRepo: accountRepo,
+		ConfigRepo:           configRepo,
+		InstagramClient:      client,
+	}
+
+	svc.Run()
+	assert.Equal(t, "session-1", client.sessionID)
+	assert.Equal(t, "csrf-1", client.csrfToken)
+
+	configRepo.values[repository.ConfigKeyIGSessionID] = "session-2"
+	configRepo.values[repository.ConfigKeyIGCSRFToken] = "csrf-2"
+	svc.Run()
+
+	assert.Equal(t, "session-2", client.sessionID)
+	assert.Equal(t, "csrf-2", client.csrfToken)
+	assert.Equal(t, 2, client.setCredsRun)
+	require.Len(t, configRepo.getCalls, 2)
+	assert.Equal(t, []string{
+		repository.ConfigKeyIGSessionID,
+		repository.ConfigKeyIGCSRFToken,
+	}, configRepo.getCalls[0])
+}
+
+func TestInstagramRunStopsWhenCredentialsCannotBeLoaded(t *testing.T) {
+	accountRepoCalls := 0
+	accountRepo := &fakeInstagramRepo{getAllFn: func() ([]repository.InstagramAccount, error) {
+		accountRepoCalls++
+		return nil, nil
+	}}
+	client := &fakeInstagramClient{}
+
+	t.Run("database error", func(t *testing.T) {
+		svc := &InstagramServiceImpl{
+			InstagramAccountRepo: accountRepo,
+			ConfigRepo:           &fakeConfigRepo{getErr: errors.New("database unavailable")},
+			InstagramClient:      client,
+		}
+		svc.Run()
+		assert.Equal(t, 0, accountRepoCalls)
+		assert.Equal(t, 0, client.setCredsRun)
+	})
+
+	t.Run("missing value", func(t *testing.T) {
+		svc := &InstagramServiceImpl{
+			InstagramAccountRepo: accountRepo,
+			ConfigRepo: &fakeConfigRepo{values: map[string]string{
+				repository.ConfigKeyIGSessionID: "session",
+			}},
+			InstagramClient: client,
+		}
+		svc.Run()
+		assert.Equal(t, 0, accountRepoCalls)
+		assert.Equal(t, 0, client.setCredsRun)
+	})
+}
+
 func TestInstagramRunSendsNewPosts(t *testing.T) {
 	accountRepo := &fakeInstagramRepo{getAllFn: func() ([]repository.InstagramAccount, error) {
 		return []repository.InstagramAccount{{Username: "foo", LastShortcodes: "AAA"}}, nil
 	}}
-	// Feed returns AAA + BBB, only AAA is known -> BBB is a new post -> notify.
 	client := &fakeInstagramClient{getFn: func(url string) ([]byte, error) {
 		if strings.Contains(url, "web_profile_info") {
 			return []byte(igProfileJSON), nil
@@ -261,8 +325,7 @@ func TestInstagramRunSendsNewPosts(t *testing.T) {
 	require.Len(t, tg.photos, 1)
 	assert.Equal(t, int64(42), tg.photos[0].chatID)
 	assert.Equal(t, "http://img/b", tg.photos[0].url)
-	assert.Empty(t, tg.photos[0].caption) // media carries no caption anymore
-	// the header + link now arrive as a separate summary message
+	assert.Empty(t, tg.photos[0].caption)
 	require.Len(t, tg.messages, 1)
 	assert.Contains(t, tg.messages[0].text, "foo")
 	assert.Contains(t, tg.messages[0].text, "BBB")
@@ -270,13 +333,16 @@ func TestInstagramRunSendsNewPosts(t *testing.T) {
 }
 
 func TestInstagramRunAlertsOnceOnExpiredSession(t *testing.T) {
+	originalHourFn := hourFn
+	hourFn = func() int { return 0 }
+	t.Cleanup(func() { hourFn = originalHourFn })
+
 	accountRepo := &fakeInstagramRepo{getAllFn: func() ([]repository.InstagramAccount, error) {
 		return []repository.InstagramAccount{
-			{Username: "foo", UserID: "1"},
-			{Username: "bar", UserID: "2"},
+			{ID: 1, Username: "foo", UserID: "1"},
+			{ID: 3, Username: "bar", UserID: "2"},
 		}, nil
 	}}
-	// Feed endpoint always reports an expired session.
 	client := &fakeInstagramClient{getFn: func(string) ([]byte, error) {
 		return nil, fmt.Errorf("%w (HTTP 401)", external.ErrSessionExpired)
 	}}
@@ -285,10 +351,9 @@ func TestInstagramRunAlertsOnceOnExpiredSession(t *testing.T) {
 
 	svc.Run()
 
-	// Exactly one alert, and the run stops before touching the second account.
 	require.Len(t, tg.messages, 1)
 	assert.Equal(t, int64(42), tg.messages[0].chatID)
-	assert.Contains(t, tg.messages[0].text, "IG_SESSION_ID")
+	assert.Contains(t, tg.messages[0].text, "change <session_id> <csrf_token>")
 	assert.Empty(t, tg.photos)
 	assert.Empty(t, accountRepo.updatedShortcodes)
 }
@@ -311,14 +376,12 @@ func TestParseVideoAndCarousel(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, posts, 2)
 
-	// video post
 	require.Len(t, posts[0].Media, 1)
 	assert.True(t, posts[0].Media[0].IsVideo)
 	assert.Equal(t, "http://vid/v", posts[0].Media[0].URL)
 	assert.Equal(t, "http://img/vthumb", posts[0].Media[0].ThumbnailURL)
 	assert.Equal(t, "a *fancy* caption", posts[0].Caption)
 
-	// carousel with an image + a video child, in order
 	require.Len(t, posts[1].Media, 2)
 	assert.False(t, posts[1].Media[0].IsVideo)
 	assert.Equal(t, "http://img/c1", posts[1].Media[0].URL)
@@ -339,10 +402,10 @@ func TestNotifySendsVideoByURLThenSummary(t *testing.T) {
 
 	require.Len(t, tg.videos, 1)
 	assert.Equal(t, "http://vid/v", tg.videos[0].url)
-	assert.Empty(t, tg.uploads) // URL send succeeded, no upload needed
+	assert.Empty(t, tg.uploads)
 	require.Len(t, tg.messages, 1)
 	assert.Contains(t, tg.messages[0].text, "foo")
-	assert.Contains(t, tg.messages[0].text, "\\_world\\_") // caption markdown-escaped
+	assert.Contains(t, tg.messages[0].text, "\\_world\\_")
 }
 
 func TestNotifyVideoUploadFallbackWhenURLFails(t *testing.T) {
@@ -355,10 +418,10 @@ func TestNotifyVideoUploadFallbackWhenURLFails(t *testing.T) {
 
 	svc.notify("foo", []igPost{post})
 
-	require.Len(t, tg.videos, 1)  // URL attempt happened
-	require.Len(t, tg.uploads, 1) // fell back to multipart upload
+	require.Len(t, tg.videos, 1)
+	require.Len(t, tg.uploads, 1)
 	assert.Equal(t, "VID_0.mp4", tg.uploads[0].filename)
-	assert.Empty(t, tg.photos) // upload succeeded, no thumbnail fallback
+	assert.Empty(t, tg.photos)
 }
 
 func TestNotifyVideoThumbnailFallbackWhenTooLarge(t *testing.T) {
@@ -372,7 +435,7 @@ func TestNotifyVideoThumbnailFallbackWhenTooLarge(t *testing.T) {
 
 	svc.notify("foo", []igPost{post})
 
-	assert.Empty(t, tg.uploads) // too big to upload
+	assert.Empty(t, tg.uploads)
 	require.Len(t, tg.photos, 1)
 	assert.Equal(t, "http://img/t", tg.photos[0].url)
 	assert.Contains(t, tg.photos[0].caption, "Instagram")
@@ -404,8 +467,8 @@ func TestNotifyVideoUploadFailureFallsBack(t *testing.T) {
 
 	svc.notify("foo", []igPost{post})
 
-	require.Len(t, tg.uploads, 1) // upload attempted
-	require.Len(t, tg.photos, 1)  // then fell back to thumbnail
+	require.Len(t, tg.uploads, 1)
+	require.Len(t, tg.photos, 1)
 	assert.Equal(t, "http://img/t", tg.photos[0].url)
 }
 
@@ -424,7 +487,6 @@ func TestSendMediaPhotoErrorIsLogged(t *testing.T) {
 	tg := &fakeTelegramClient{err: errors.New("boom")}
 	svc := &InstagramServiceImpl{TelegramClient: tg, PersonalChatID: 7}
 
-	// Should not panic; the error is logged and swallowed.
 	svc.sendMedia("foo", "IMG", "http://link/IMG/", 0, igMedia{IsVideo: false, URL: "http://img/x"})
 
 	require.Len(t, tg.photos, 1)
@@ -445,7 +507,6 @@ func TestFetchLatestPostsSkipsMediaWithoutURLs(t *testing.T) {
 
 	posts, err := svc.fetchLatestPosts("foo", "123")
 	require.NoError(t, err)
-	// every item resolves to zero usable media, so nothing is emitted
 	assert.Empty(t, posts)
 }
 
@@ -467,7 +528,6 @@ func TestFetchLatestStories(t *testing.T) {
 
 	stories, err := svc.fetchLatestStories("foo", "123")
 	require.NoError(t, err)
-	// pk 333 has no usable media -> skipped
 	require.Len(t, stories, 2)
 	assert.Equal(t, "111", stories[0].ID)
 	assert.False(t, stories[0].Media.IsVideo)
@@ -493,7 +553,7 @@ func TestFetchLatestStoriesAltShape(t *testing.T) {
 func TestProcessStoriesEmptyCacheSendsEverything(t *testing.T) {
 	accountRepo := &fakeInstagramRepo{}
 	client := &fakeInstagramClient{getFn: func(string) ([]byte, error) {
-		return []byte(igStoriesJSON), nil // stories 111 + 222 (333 has no media)
+		return []byte(igStoriesJSON), nil
 	}}
 	tg := &fakeTelegramClient{}
 	svc := &InstagramServiceImpl{InstagramAccountRepo: accountRepo, InstagramClient: client, TelegramClient: tg}
@@ -502,7 +562,6 @@ func TestProcessStoriesEmptyCacheSendsEverything(t *testing.T) {
 	err := svc.processStories(account, "123")
 	require.NoError(t, err)
 
-	// empty cache => all current stories are new and delivered
 	require.Len(t, tg.messages, 2)
 	assert.Equal(t, "111,222", accountRepo.updatedStoryIDs["foo"])
 }
@@ -510,7 +569,7 @@ func TestProcessStoriesEmptyCacheSendsEverything(t *testing.T) {
 func TestProcessStoriesNoActiveStoryClearsCache(t *testing.T) {
 	accountRepo := &fakeInstagramRepo{}
 	client := &fakeInstagramClient{getFn: func(string) ([]byte, error) {
-		return []byte(`{"reels_media":[]}`), nil // no active story
+		return []byte(`{"reels_media":[]}`), nil
 	}}
 	tg := &fakeTelegramClient{}
 	svc := &InstagramServiceImpl{InstagramAccountRepo: accountRepo, InstagramClient: client, TelegramClient: tg}
@@ -519,7 +578,6 @@ func TestProcessStoriesNoActiveStoryClearsCache(t *testing.T) {
 	err := svc.processStories(account, "123")
 	require.NoError(t, err)
 
-	// cache is replaced with the (empty) current set, nothing sent
 	assert.Equal(t, "", accountRepo.updatedStoryIDs["foo"])
 	assert.Empty(t, tg.messages)
 }
@@ -533,9 +591,7 @@ func TestNotifyStoriesEscapesUnderscoreUsername(t *testing.T) {
 
 	require.Len(t, tg.messages, 1)
 	txt := tg.messages[0].text
-	// username underscores escaped inside bold so Telegram markdown does not choke
 	assert.Contains(t, txt, "*jjuya\\_o0o*")
-	// link rendered as inline markdown link with escaped visible text + raw url target
 	assert.Contains(t, txt, "[https://www.instagram.com/stories/jjuya\\_o0o/999/]")
 	assert.Contains(t, txt, "(https://www.instagram.com/stories/jjuya_o0o/999/)")
 }
@@ -564,15 +620,12 @@ func TestFetchLatestStoriesEmptyAndErrors(t *testing.T) {
 func TestDetectNewStories(t *testing.T) {
 	current := []igStory{{ID: "111"}, {ID: "222"}, {ID: "333"}}
 
-	// empty cache: everything is new (send everything on first run)
 	assert.Len(t, detectNewStories("", current), 3)
 
-	// only unseen ids are new
 	got := detectNewStories("111,222", current)
 	require.Len(t, got, 1)
 	assert.Equal(t, "333", got[0].ID)
 
-	// nothing new
 	assert.Empty(t, detectNewStories("111,222,333", current))
 }
 
@@ -586,7 +639,6 @@ func TestNotifyStoriesSendsMediaThenSummary(t *testing.T) {
 
 	svc.notifyStories("foo", stories)
 
-	// first story: photo + summary; second story: video + summary
 	require.Len(t, tg.photos, 1)
 	assert.Equal(t, "http://img/s1", tg.photos[0].url)
 	require.Len(t, tg.videos, 1)
@@ -594,7 +646,7 @@ func TestNotifyStoriesSendsMediaThenSummary(t *testing.T) {
 	require.Len(t, tg.messages, 2)
 	assert.Contains(t, tg.messages[0].text, "👀 New story from *foo*")
 	assert.Contains(t, tg.messages[0].text, "/stories/foo/111/")
-	assert.Contains(t, tg.messages[1].text, "\\_there\\_") // caption escaped
+	assert.Contains(t, tg.messages[1].text, "\\_there\\_")
 }
 
 func TestInstagramRunSendsNewStory(t *testing.T) {
@@ -603,20 +655,19 @@ func TestInstagramRunSendsNewStory(t *testing.T) {
 	}}
 	client := &fakeInstagramClient{getFn: func(url string) ([]byte, error) {
 		if strings.Contains(url, "reels_media") {
-			return []byte(igStoriesJSON), nil // has 111 (known) + 222 (new)
+			return []byte(igStoriesJSON), nil
 		}
-		return []byte(igFeedJSON), nil // AAA,BBB already known -> no new posts
+		return []byte(igFeedJSON), nil
 	}}
 	tg := &fakeTelegramClient{}
 	svc := &InstagramServiceImpl{InstagramAccountRepo: accountRepo, InstagramClient: client, TelegramClient: tg, PersonalChatID: 42}
 
 	svc.Run()
 
-	// only the new story (222, a video) is delivered
 	require.Len(t, tg.videos, 1)
 	assert.Equal(t, "http://vid/s2", tg.videos[0].url)
 	require.Len(t, tg.messages, 1)
 	assert.Contains(t, tg.messages[0].text, "New story from *foo*")
 	assert.Equal(t, "111,222", accountRepo.updatedStoryIDs["foo"])
-	assert.Empty(t, tg.photos) // no new posts, story 222 is a video
+	assert.Empty(t, tg.photos)
 }

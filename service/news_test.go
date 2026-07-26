@@ -83,7 +83,6 @@ func TestNewsParsers(t *testing.T) {
 			assert.Equal(t, tc.wantTitle, strings.TrimSpace(title))
 			assert.Equal(t, tc.wantURL, url)
 
-			// Metadata sanity.
 			assert.NotEmpty(t, tc.source.Name())
 			assert.NotEmpty(t, tc.source.URL())
 			assert.NotEmpty(t, tc.source.Flag())
@@ -101,7 +100,6 @@ func TestNewsParsersErrorOnEmptyDoc(t *testing.T) {
 	}
 }
 
-// fakeNewsSource lets us exercise Run/fetchNews against a local test server.
 type fakeNewsSource struct {
 	url     string
 	parseFn func(*goquery.Document) (string, string, error)
@@ -114,11 +112,16 @@ func (f fakeNewsSource) Parse(doc *goquery.Document) (string, string, error) {
 	return f.parseFn(doc)
 }
 
-func TestNewNewsService(t *testing.T) {
-	svc := NewNewsService(&fakeTelegramClient{}, 123)
+func TestNewsServiceConfiguration(t *testing.T) {
+	svc := &NewsServiceImpl{
+		TelegramClient: &fakeTelegramClient{},
+		GroupChatID:    123,
+		HTTPClient:     &http.Client{},
+		Sources:        []NewsObject{Detik{}, Tirtol{}, Kumparan{}, CNA{}, Mothership{}, Reuters{}},
+	}
 	require.NotNil(t, svc)
 	assert.Equal(t, int64(123), svc.GroupChatID)
-	assert.Len(t, svc.sources, 6) // Detik, Tirtol, Kumparan, CNA, Mothership, Reuters
+	assert.Len(t, svc.Sources, 6)
 }
 
 func TestNewsRun(t *testing.T) {
@@ -131,8 +134,8 @@ func TestNewsRun(t *testing.T) {
 	svc := &NewsServiceImpl{
 		TelegramClient: tg,
 		GroupChatID:    777,
-		httpClient:     srv.Client(),
-		sources: []NewsObject{
+		HTTPClient:     srv.Client(),
+		Sources: []NewsObject{
 			fakeNewsSource{url: srv.URL, parseFn: func(*goquery.Document) (string, string, error) {
 				return "Breaking News", "https://example.com/story", nil
 			}},

@@ -7,9 +7,9 @@ import (
 type InstagramAccount struct {
 	ID             int    `db:"id"`
 	Username       string `db:"username"`
-	LastShortcodes string `db:"last_shortcodes"` // comma-separated post shortcodes, e.g. "ABC123,DEF456,..."
-	UserID         string `db:"user_id"`         // numeric instagram user id; empty when not yet resolved
-	LastStoryIDs   string `db:"last_story_ids"`  // comma-separated story pks currently seen
+	LastShortcodes string `db:"last_shortcodes"`
+	UserID         string `db:"user_id"`
+	LastStoryIDs   string `db:"last_story_ids"`
 }
 
 type InstagramAccountRepo interface {

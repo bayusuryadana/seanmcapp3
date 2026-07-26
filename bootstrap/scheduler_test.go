@@ -27,7 +27,6 @@ func TestScheduleRepeat(t *testing.T) {
 	id, err := s.Schedule(c)
 	require.NoError(t, err)
 
-	// Trigger the scheduled job manually (cron is not started).
 	c.Entry(id).Job.Run()
 
 	assert.Equal(t, 1, task.runs)
@@ -47,4 +46,3 @@ func TestScheduleOnce(t *testing.T) {
 	assert.Equal(t, 1, task.runs)
 	assert.Empty(t, c.Entries(), "one-shot task should remove itself after running")
 }
-

@@ -24,8 +24,6 @@ func TestGetAppSettings(t *testing.T) {
 		"TELEGRAM_BOT_NAME":         "botname",
 		"TELEGRAM_PERSONAL_CHAT_ID": "123",
 		"TELEGRAM_GROUP_CHAT_ID":    "456",
-		"IG_SESSION_ID":             "sess",
-		"IG_CSRF_TOKEN":             "csrf",
 	}
 	for key, value := range origEnv {
 		require.NoError(t, os.Setenv(key, value))
@@ -52,12 +50,10 @@ func TestGetAppSettings(t *testing.T) {
 	assert.Equal(t, "botname", settings.TelegramSettings.Botname)
 	assert.Equal(t, int64(123), settings.TelegramSettings.PersonalChatID)
 	assert.Equal(t, int64(456), settings.TelegramSettings.GroupChatID)
-	assert.Equal(t, "sess", settings.IGSettings.SessionID)
-	assert.Equal(t, "csrf", settings.IGSettings.CSRFToken)
 }
 
 func TestGetAppSettingsMissingEnvPanics(t *testing.T) {
-	for _, key := range []string{"DATABASE_HOST", "DATABASE_NAME", "DATABASE_PASS", "DATABASE_USER", "APPS_SECRET_KEY", "APPS_PASSWORD", "TELEGRAM_BOT_ENDPOINT", "TELEGRAM_BOT_NAME", "TELEGRAM_PERSONAL_CHAT_ID", "TELEGRAM_GROUP_CHAT_ID", "IG_SESSION_ID", "IG_CSRF_TOKEN"} {
+	for _, key := range []string{"DATABASE_HOST", "DATABASE_NAME", "DATABASE_PASS", "DATABASE_USER", "APPS_SECRET_KEY", "APPS_PASSWORD", "TELEGRAM_BOT_ENDPOINT", "TELEGRAM_BOT_NAME", "TELEGRAM_PERSONAL_CHAT_ID", "TELEGRAM_GROUP_CHAT_ID"} {
 		_ = os.Unsetenv(key)
 	}
 	defer func() {

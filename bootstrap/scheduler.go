@@ -4,7 +4,6 @@ import (
 	"github.com/robfig/cron/v3"
 )
 
-
 type ScheduledTask interface {
 	Run()
 }

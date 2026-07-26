@@ -23,7 +23,6 @@ func TestStockGetAll(t *testing.T) {
 	assert.Equal(t, "BBCA", got[0].Name)
 	assert.Equal(t, int64(150), *got[0].CurrentPrice)
 
-	// error passthrough
 	repo.getAllFn = func() ([]repository.Stock, error) { return nil, errors.New("db down") }
 	_, err = svc.GetAll()
 	assert.Error(t, err)
@@ -83,16 +82,12 @@ func TestStockRefreshPrices(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, got, 2)
 
-	// Every stock's price was fetched and persisted.
 	assert.ElementsMatch(t, []string{"BBCA", "TLKM"}, client.calls)
 	require.Len(t, repo.updated, 2)
 	assert.Equal(t, int64(155), *repo.updated[0].CurrentPrice)
 }
 
 func TestStockRunAlerts(t *testing.T) {
-	// BBCA: wishlist (status=false) and current <= best  -> "hitting best price"
-	// TLKM: owned   (status=true)  and current >= fair  -> "reaching fair price"
-	// GOTO: current price nil -> skipped entirely
 	stocks := []repository.Stock{
 		{Name: "BBCA", BestPrice: 100, FairPrice: 200, Status: false, CurrentPrice: ptr[int64](90)},
 		{Name: "TLKM", BestPrice: 300, FairPrice: 400, Status: true, CurrentPrice: ptr[int64](410)},
@@ -140,7 +135,7 @@ func TestStockRefreshPricesErrors(t *testing.T) {
 		got, err := svc.RefreshPrices()
 		require.NoError(t, err)
 		assert.Len(t, got, 1)
-		assert.Empty(t, repo.updated) // update skipped because price fetch failed
+		assert.Empty(t, repo.updated)
 	})
 }
 
@@ -149,7 +144,6 @@ func TestStockRunGetAllError(t *testing.T) {
 	tg := &fakeTelegramClient{}
 	svc := &StockServiceImpl{StockRepo: repo, StockClient: &fakeStockClient{}, TelegramClient: tg}
 
-	svc.Run() // should return early without panicking
+	svc.Run()
 	assert.Empty(t, tg.messages)
 }
-

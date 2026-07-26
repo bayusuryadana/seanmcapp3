@@ -31,7 +31,7 @@ func main() {
 
 	port := os.Getenv("PORT")
 	if port == "" {
-		port = "8080" // fallback for local dev
+		port = "8080"
 	}
 
 	srv := &http.Server{Addr: ":" + port, Handler: router}
@@ -43,7 +43,6 @@ func main() {
 	}()
 	log.Println("server started on :" + port)
 
-	// Wait for SIGTERM (Heroku dyno restart) or SIGINT (Ctrl-C).
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 	<-ctx.Done()
@@ -56,8 +55,6 @@ func main() {
 		log.Printf("graceful shutdown failed: %v", err)
 	}
 
-	// Let in-flight cron jobs finish (bounded by the same deadline) so a
-	// background job isn't severed mid-write on a Heroku restart.
 	select {
 	case <-cronScheduler.Stop().Done():
 	case <-shutdownCtx.Done():
