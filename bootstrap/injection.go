@@ -51,7 +51,6 @@ func GetMainServices(settings util.AppsSettings) (MainServices, *sql.DB) {
 	walletRepo := &repository.WalletRepoImpl{DB: db}
 	stockRepo := &repository.StockRepoImpl{DB: db}
 	instagramAccountRepo := &repository.InstagramAccountRepoImpl{DB: db}
-	configRepo := &repository.ConfigRepoImpl{DB: db}
 
 	httpClient := &http.Client{Timeout: external.HTTPTimeout}
 	telegramClient := &external.TelegramClientImpl{
@@ -65,7 +64,6 @@ func GetMainServices(settings util.AppsSettings) (MainServices, *sql.DB) {
 		tls_client.WithTimeoutSeconds(15),
 		tls_client.WithClientProfile(profiles.Chrome_144),
 		tls_client.WithNotFollowRedirects(),
-		tls_client.WithCookieJar(tls_client.NewCookieJar()),
 	)
 	if err != nil {
 		log.Fatalf("cannot initialize Instagram client: %v", err)
@@ -88,11 +86,10 @@ func GetMainServices(settings util.AppsSettings) (MainServices, *sql.DB) {
 		},
 	}
 	stockService := &service.StockServiceImpl{StockRepo: stockRepo, StockClient: stockClient, TelegramClient: telegramClient, PersonalChatID: settings.TelegramSettings.PersonalChatID}
-	instagramService := &service.InstagramServiceImpl{InstagramAccountRepo: instagramAccountRepo, ConfigRepo: configRepo, InstagramClient: instagramClient, TelegramClient: telegramClient, PersonalChatID: settings.TelegramSettings.PersonalChatID}
-	instagramCredentialsCommand := &service.InstagramCredentialsCommand{ConfigRepo: configRepo, TelegramClient: telegramClient, PersonalChatID: settings.TelegramSettings.PersonalChatID}
+	instagramService := &service.InstagramServiceImpl{InstagramAccountRepo: instagramAccountRepo, InstagramClient: instagramClient, TelegramClient: telegramClient, PersonalChatID: settings.TelegramSettings.PersonalChatID}
 	telegramUpdateHandler := &service.TelegramCommandDispatcher{
 		Botname:  settings.TelegramSettings.Botname,
-		Commands: []service.TelegramCommand{instagramCredentialsCommand},
+		Commands: nil,
 	}
 
 	return MainServices{

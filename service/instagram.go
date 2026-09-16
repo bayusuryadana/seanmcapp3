@@ -1,7 +1,6 @@
 package service
 
 import (
-	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -16,9 +15,7 @@ import (
 const (
 	igProfileBase = "https://www.instagram.com/api/v1/users/web_profile_info/?username="
 	igFeedBase    = "https://www.instagram.com/api/v1/feed/user/"
-	igStoriesBase = "https://www.instagram.com/api/v1/feed/reels_media/?reel_ids="
 	igPostBase    = "https://www.instagram.com/p/"
-	igStoryBase   = "https://www.instagram.com/stories/"
 	igMaxPosts    = 9
 
 	igMaxUploadBytes = 50 * 1024 * 1024
@@ -30,7 +27,6 @@ type InstagramService interface {
 
 type InstagramServiceImpl struct {
 	InstagramAccountRepo repository.InstagramAccountRepo
-	ConfigRepo           repository.ConfigRepo
 	InstagramClient      external.InstagramClient
 	TelegramClient       external.TelegramClient
 	PersonalChatID       int64
@@ -47,12 +43,6 @@ type igPost struct {
 	Shortcode string
 	Caption   string
 	Media     []igMedia
-}
-
-type igStory struct {
-	ID      string
-	Caption string
-	Media   igMedia
 }
 
 var sleepFn = time.Sleep
@@ -95,11 +85,6 @@ func sleepRandom(min, max time.Duration) {
 
 func (s *InstagramServiceImpl) Run() {
 	s.guard.run("instagram run", func() {
-		if err := s.refreshCredentials(); err != nil {
-			log.Printf("[ERROR] loading Instagram credentials: %v", err)
-			return
-		}
-
 		accounts, err := s.InstagramAccountRepo.GetAll()
 		if err != nil {
 			log.Println("[ERROR] fetching instagram accounts:", err)
@@ -121,73 +106,28 @@ func (s *InstagramServiceImpl) Run() {
 
 			log.Printf("Checking Instagram account: %s", account.Username)
 
-			if errors.Is(s.processAccount(account), external.ErrSessionExpired) {
-				log.Printf("[ERROR] instagram session expired while checking %s", account.Username)
-				if _, sendErr := s.TelegramClient.SendMessage(s.PersonalChatID, "⚠️ Instagram session expired. Send `change <session_id> <csrf_token>` to update it."); sendErr != nil {
-					log.Printf("[ERROR] sending session-expired alert: %v", sendErr)
-				}
-				return
-			}
+			s.processAccount(account)
 		}
 
 		log.Printf("===== Instagram run/trigger is completed =====")
 	})
 }
 
-func (s *InstagramServiceImpl) refreshCredentials() error {
-	if s.ConfigRepo == nil {
-		return nil
-	}
-
-	values, err := s.ConfigRepo.GetValues(
-		repository.ConfigKeyIGSessionID,
-		repository.ConfigKeyIGCSRFToken,
-	)
-	if err != nil {
-		return err
-	}
-
-	sessionID := values[repository.ConfigKeyIGSessionID]
-	csrfToken := values[repository.ConfigKeyIGCSRFToken]
-	if sessionID == "" || csrfToken == "" {
-		return fmt.Errorf(
-			"missing %q or %q in app_config",
-			repository.ConfigKeyIGSessionID,
-			repository.ConfigKeyIGCSRFToken,
-		)
-	}
-
-	s.InstagramClient.SetCredentials(sessionID, csrfToken)
-	return nil
-}
-
-func (s *InstagramServiceImpl) processAccount(account repository.InstagramAccount) error {
+func (s *InstagramServiceImpl) processAccount(account repository.InstagramAccount) {
 	userID, err := s.resolveUserID(account)
 	if err != nil {
-		if errors.Is(err, external.ErrSessionExpired) {
-			return err
-		}
 		log.Printf("[ERROR] resolving user id for %s: %v", account.Username, err)
-		return nil
+		return
 	}
 
-	if err := s.processPosts(account, userID); errors.Is(err, external.ErrSessionExpired) {
-		return err
-	}
-	if err := s.processStories(account, userID); errors.Is(err, external.ErrSessionExpired) {
-		return err
-	}
-	return nil
+	s.processPosts(account, userID)
 }
 
-func (s *InstagramServiceImpl) processPosts(account repository.InstagramAccount, userID string) error {
+func (s *InstagramServiceImpl) processPosts(account repository.InstagramAccount, userID string) {
 	posts, err := s.fetchLatestPosts(account.Username, userID)
 	if err != nil {
-		if errors.Is(err, external.ErrSessionExpired) {
-			return err
-		}
 		log.Printf("[ERROR] fetching posts for %s: %v", account.Username, err)
-		return nil
+		return
 	}
 
 	newPosts := detectNewPosts(account.LastShortcodes, posts)
@@ -204,34 +144,6 @@ func (s *InstagramServiceImpl) processPosts(account repository.InstagramAccount,
 	if err := s.InstagramAccountRepo.UpdateLastShortcodes(account.Username, strings.Join(shortcodes, ",")); err != nil {
 		log.Printf("[ERROR] updating shortcodes for %s: %v", account.Username, err)
 	}
-	return nil
-}
-
-func (s *InstagramServiceImpl) processStories(account repository.InstagramAccount, userID string) error {
-	stories, err := s.fetchLatestStories(account.Username, userID)
-	if err != nil {
-		if errors.Is(err, external.ErrSessionExpired) {
-			return err
-		}
-		log.Printf("[ERROR] fetching stories for %s: %v", account.Username, err)
-		return nil
-	}
-
-	newStories := detectNewStories(account.LastStoryIDs, stories)
-	if len(newStories) > 0 {
-		s.notifyStories(account.Username, newStories)
-	} else {
-		log.Printf("No new stories for %s", account.Username)
-	}
-
-	ids := make([]string, len(stories))
-	for i, st := range stories {
-		ids[i] = st.ID
-	}
-	if err := s.InstagramAccountRepo.UpdateLastStoryIDs(account.Username, strings.Join(ids, ",")); err != nil {
-		log.Printf("[ERROR] updating story ids for %s: %v", account.Username, err)
-	}
-	return nil
 }
 
 func (s *InstagramServiceImpl) resolveUserID(account repository.InstagramAccount) (string, error) {
@@ -323,56 +235,6 @@ func singleMedia(node gjson.Result) (igMedia, bool) {
 	return igMedia{IsVideo: false, URL: thumb}, true
 }
 
-func (s *InstagramServiceImpl) fetchLatestStories(username, userID string) ([]igStory, error) {
-	body, err := s.InstagramClient.Get(igStoriesBase + userID)
-	if err != nil {
-		return nil, err
-	}
-
-	items := gjson.GetBytes(body, "reels_media.0.items")
-	if !items.Exists() {
-		items = gjson.GetBytes(body, "reels."+userID+".items")
-	}
-	if !items.Exists() {
-		return nil, nil
-	}
-
-	var stories []igStory
-	items.ForEach(func(_, item gjson.Result) bool {
-		id := item.Get("pk").String()
-		if id == "" {
-			id = item.Get("id").String()
-		}
-		media, ok := singleMedia(item)
-		if id == "" || !ok {
-			return true
-		}
-		stories = append(stories, igStory{
-			ID:      id,
-			Caption: item.Get("caption.text").String(),
-			Media:   media,
-		})
-		return true
-	})
-
-	return stories, nil
-}
-
-func detectNewStories(storedRaw string, current []igStory) []igStory {
-	stored := make(map[string]bool)
-	for _, id := range strings.Split(storedRaw, ",") {
-		stored[strings.TrimSpace(id)] = true
-	}
-
-	var newStories []igStory
-	for _, st := range current {
-		if !stored[st.ID] {
-			newStories = append(newStories, st)
-		}
-	}
-	return newStories
-}
-
 func detectNewPosts(storedRaw string, current []igPost) []igPost {
 	if storedRaw == "" {
 		return nil
@@ -409,24 +271,6 @@ func (s *InstagramServiceImpl) notify(username string, newPosts []igPost) {
 			log.Printf("[ERROR] sending summary for %s/%s: %v", username, p.Shortcode, err)
 		}
 		sleepRandom(1100*time.Millisecond, 2700*time.Millisecond)
-	}
-}
-
-func (s *InstagramServiceImpl) notifyStories(username string, newStories []igStory) {
-	for _, st := range newStories {
-		storyLink := fmt.Sprintf("%s%s/%s/", igStoryBase, username, st.ID)
-
-		s.sendMedia(username, st.ID, storyLink, 0, st.Media)
-		sleepRandom(1300*time.Millisecond, 3000*time.Millisecond)
-
-		summary := fmt.Sprintf("👀 New story from *%s*\n🔗 [%s](%s)", escapeMarkdown(username), escapeMarkdown(storyLink), storyLink)
-		if caption := strings.TrimSpace(st.Caption); caption != "" {
-			summary += "\n\n" + escapeMarkdown(caption)
-		}
-		if _, err := s.TelegramClient.SendMessage(s.PersonalChatID, summary); err != nil {
-			log.Printf("[ERROR] sending story summary for %s/%s: %v", username, st.ID, err)
-		}
-		sleepRandom(1300*time.Millisecond, 3000*time.Millisecond)
 	}
 }
 

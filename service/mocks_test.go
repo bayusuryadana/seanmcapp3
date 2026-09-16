@@ -47,7 +47,6 @@ type fakeInstagramRepo struct {
 
 	updatedShortcodes map[string]string
 	updatedUserIDs    map[string]string
-	updatedStoryIDs   map[string]string
 }
 
 func (f *fakeInstagramRepo) GetAll() ([]repository.InstagramAccount, error) { return f.getAllFn() }
@@ -68,43 +67,6 @@ func (f *fakeInstagramRepo) UpdateUserID(username, userID string) error {
 	}
 	f.updatedUserIDs[username] = userID
 	return nil
-}
-
-func (f *fakeInstagramRepo) UpdateLastStoryIDs(username, storyIDs string) error {
-	if f.updatedStoryIDs == nil {
-		f.updatedStoryIDs = map[string]string{}
-	}
-	f.updatedStoryIDs[username] = storyIDs
-	return nil
-}
-
-type fakeConfigRepo struct {
-	values   map[string]string
-	getErr   error
-	setErr   error
-	getCalls [][]string
-	setCalls []map[string]string
-}
-
-func (f *fakeConfigRepo) GetValues(keys ...string) (map[string]string, error) {
-	f.getCalls = append(f.getCalls, append([]string(nil), keys...))
-	if f.getErr != nil {
-		return nil, f.getErr
-	}
-	result := make(map[string]string, len(keys))
-	for _, key := range keys {
-		result[key] = f.values[key]
-	}
-	return result, nil
-}
-
-func (f *fakeConfigRepo) SetValues(values map[string]string) error {
-	copied := make(map[string]string, len(values))
-	for key, value := range values {
-		copied[key] = value
-	}
-	f.setCalls = append(f.setCalls, copied)
-	return f.setErr
 }
 
 type fakeStockClient struct {
@@ -177,16 +139,7 @@ func (f *fakeTelegramClient) SendVideoUpload(chatID int64, data []byte, filename
 }
 
 type fakeInstagramClient struct {
-	getFn       func(url string) ([]byte, error)
-	sessionID   string
-	csrfToken   string
-	setCredsRun int
-}
-
-func (f *fakeInstagramClient) SetCredentials(sessionID, csrfToken string) {
-	f.sessionID = sessionID
-	f.csrfToken = csrfToken
-	f.setCredsRun++
+	getFn func(url string) ([]byte, error)
 }
 
 func (f *fakeInstagramClient) Get(url string) ([]byte, error) { return f.getFn(url) }
