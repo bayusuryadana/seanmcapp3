@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"errors"
 	"regexp"
 	"testing"
 
@@ -21,4 +22,22 @@ func TestInstagramGetAllReadsPostTrackingFields(t *testing.T) {
 	require.Len(t, accounts, 1)
 	assert.Equal(t, "AAA", accounts[0].LastShortcodes)
 	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestInstagramAccountUpdates(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := &InstagramAccountRepoImpl{DB: db}
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE instagram_accounts SET last_shortcodes = $1 WHERE username = $2")).WithArgs("AAA,BBB", "foo").WillReturnResult(sqlmock.NewResult(0, 1))
+	mock.ExpectExec(regexp.QuoteMeta("UPDATE instagram_accounts SET user_id = $1 WHERE username = $2")).WithArgs("123", "foo").WillReturnResult(sqlmock.NewResult(0, 1))
+	require.NoError(t, repo.UpdateLastShortcodes("foo", "AAA,BBB"))
+	require.NoError(t, repo.UpdateUserID("foo", "123"))
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestInstagramGetAllQueryError(t *testing.T) {
+	db, mock := newMockDB(t)
+	repo := &InstagramAccountRepoImpl{DB: db}
+	mock.ExpectQuery("SELECT id, username").WillReturnError(errors.New("query failed"))
+	_, err := repo.GetAll()
+	assert.Error(t, err)
 }
