@@ -71,6 +71,15 @@ func InitRouter(mainServices MainServices, walletSettings util.WalletSettings) *
 
 		stock := api.Group("/stock")
 		{
+			stock.POST("/summary", authMiddleware(walletSettings), func(c *gin.Context) {
+				res, err := mainServices.StockService.GetSummary(c.DefaultQuery("period", "1d"))
+				resolve(c, res, err)
+			})
+			stock.POST("/progression", authMiddleware(walletSettings), func(c *gin.Context) {
+				res, err := mainServices.StockService.GetProgression(c.DefaultQuery("period", "5d"))
+				resolve(c, res, err)
+			})
+
 			stock.POST("/getAll", authMiddleware(walletSettings), func(c *gin.Context) {
 				res, err := mainServices.StockService.GetAll()
 				resolve(c, res, err)

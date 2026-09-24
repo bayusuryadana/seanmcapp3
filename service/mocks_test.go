@@ -70,9 +70,12 @@ func (f *fakeInstagramRepo) UpdateUserID(username, userID string) error {
 }
 
 type fakeStockClient struct {
-	prices map[string]int64
-	err    error
-	calls  []string
+	prices  map[string]int64
+	err     error
+	calls   []string
+	jkse    external.IndexQuote
+	jkseErr error
+	history []external.HistoricalPrice
 }
 
 func (f *fakeStockClient) GetPrice(name string) (int64, error) {
@@ -81,6 +84,28 @@ func (f *fakeStockClient) GetPrice(name string) (int64, error) {
 		return 0, f.err
 	}
 	return f.prices[name], nil
+}
+
+func (f *fakeStockClient) GetJKSE() (external.IndexQuote, error) {
+	if f.jkseErr != nil {
+		return external.IndexQuote{}, f.jkseErr
+	}
+	return f.jkse, nil
+}
+
+func (f *fakeStockClient) GetStockHistory(name string) ([]external.HistoricalPrice, error) {
+	f.calls = append(f.calls, name)
+	if f.err != nil {
+		return nil, f.err
+	}
+	if f.history != nil {
+		return f.history, nil
+	}
+	return []external.HistoricalPrice{{Close: float64(f.prices[name])}}, nil
+}
+
+func (f *fakeStockClient) GetJKSEHistory() ([]external.HistoricalPrice, error) {
+	return f.history, f.jkseErr
 }
 
 type telegramMessage struct {

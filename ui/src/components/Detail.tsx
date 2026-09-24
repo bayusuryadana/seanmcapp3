@@ -53,11 +53,11 @@ export const Detail = (props: DetailProps) => {
 
   return (
     <Fragment>
-      <Grid container justifyContent={'space-between'}>
-        <Grid item>
+      <Grid container alignItems="center" sx={{ position: 'relative' }}>
+        <Grid item sx={{ position: 'absolute', left: 0 }}>
           <Title>Detail</Title>
         </Grid>
-        <Grid item>
+        <Grid item sx={{ mx: 'auto' }}>
           <IconButton color='primary' size='medium' sx={{display: 'inline'}} onClick={() => props.updateDashboard(shiftYearMonth(props.date, -1))}>
             <ArrowLeftIcon />
           </IconButton>
@@ -86,11 +86,6 @@ export const Detail = (props: DetailProps) => {
             <ArrowRightIcon />
           </IconButton>
         </Grid>
-        <Grid item>
-          <IconButton color='primary' size='small' onClick={props.createHandler}>
-            <AddIcon />
-          </IconButton>
-        </Grid>
       </Grid>
       <TableContainer sx={tableContainerStyle}>
         <Table size="small" sx={compactTableStyle}>
@@ -100,7 +95,7 @@ export const Detail = (props: DetailProps) => {
               <TableCell>Category</TableCell>
               <TableCell>Currency</TableCell>
               <TableCell align="right">Amount</TableCell>
-              <TableCell></TableCell>
+              <TableCell align="right"><IconButton color='primary' size='small' aria-label="add wallet detail" onClick={props.createHandler}><AddIcon /></IconButton></TableCell>
             </TableRow>
           </TableHead>
           <TableBody>

@@ -2,6 +2,7 @@ package service
 
 import (
 	"errors"
+	"seanmcapp/external"
 	"seanmcapp/repository"
 	"testing"
 
@@ -26,6 +27,15 @@ func TestStockGetAll(t *testing.T) {
 	repo.getAllFn = func() ([]repository.Stock, error) { return nil, errors.New("db down") }
 	_, err = svc.GetAll()
 	assert.Error(t, err)
+}
+
+func TestStockGetJKSE(t *testing.T) {
+	svc := &StockServiceImpl{StockClient: &fakeStockClient{jkse: external.IndexQuote{CurrentPrice: 7123.45, PreviousClose: 7000}}}
+
+	quote, err := svc.GetJKSE()
+	require.NoError(t, err)
+	assert.Equal(t, 7123.45, quote.CurrentPrice)
+	assert.Equal(t, 7000.0, quote.PreviousClose)
 }
 
 func TestStockCreateValidation(t *testing.T) {

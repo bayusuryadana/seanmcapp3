@@ -16,6 +16,7 @@ describe('StockDashboard', () => {
     mockedApi.post.mockImplementation((url: string) => {
       if (url === '/api/stock/getAll') return Promise.resolve({ data: { data: stocks } })
       if (url === '/api/stock/refresh') return Promise.resolve({ data: { data: stocks } })
+      if (url === '/api/stock/summary?period=1d') return Promise.resolve({ data: { data: { jkse: { delta: 100, percentage: 1.43 }, portfolio: { delta: 2000, percentage: 10 }, positions: { BBCA: { delta: 2000, percentage: 10 } } } } })
       return Promise.resolve({ data: { data: [] } })
     })
   })
@@ -24,10 +25,25 @@ describe('StockDashboard', () => {
     render(<StockDashboard />)
 
     await waitFor(() => expect(mockedApi.post).toHaveBeenCalledWith('/api/stock/getAll', {}))
+    await waitFor(() => expect(mockedApi.post).toHaveBeenCalledWith('/api/stock/summary?period=1d', {}))
     expect(screen.getByText('Portfolio')).toBeInTheDocument()
     expect(screen.getByText('Wishlist')).toBeInTheDocument()
     expect(await screen.findByText('BBCA')).toBeInTheDocument()
     expect(screen.getByText('TLKM')).toBeInTheDocument()
+    expect(screen.getByText('Summary')).toBeInTheDocument()
+    expect(screen.getByText('+100 (+1.43%)')).toBeInTheDocument()
+    expect(screen.getByText('Rp +2,000 (+10.00%)')).toBeInTheDocument()
+  })
+
+  it('collapses and expands the portfolio table', async () => {
+    render(<StockDashboard />)
+    await screen.findByText('BBCA')
+
+    await userEvent.click(screen.getByRole('button', { name: /Portfolio/i }))
+    expect(screen.queryByText('BBCA')).not.toBeVisible()
+
+    await userEvent.click(screen.getByRole('button', { name: /Portfolio/i }))
+    expect(screen.getByText('BBCA')).toBeVisible()
   })
 
   it('refreshes prices', async () => {
@@ -36,6 +52,19 @@ describe('StockDashboard', () => {
 
     await userEvent.click(screen.getByRole('button', { name: /Refresh prices/i }))
     await waitFor(() => expect(mockedApi.post).toHaveBeenCalledWith('/api/stock/refresh', {}))
+  })
+
+  it('masks and restores the requested money values', async () => {
+    render(<StockDashboard />)
+    await screen.findByText('BBCA')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Hide money values' }))
+    expect(screen.getAllByText('Rp ••••••').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('••••••').length).toBeGreaterThan(0)
+    expect(screen.queryByText('20,000')).not.toBeInTheDocument()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Show money values' }))
+    expect(screen.getByText('20,000')).toBeInTheDocument()
   })
 
   it('opens the edit modal from a row', async () => {
@@ -56,6 +85,7 @@ describe('StockDashboard', () => {
   it('shows an alert when refresh fails', async () => {
     mockedApi.post.mockImplementation((url: string) => {
       if (url === '/api/stock/getAll') return Promise.resolve({ data: { data: stocks } })
+      if (url === '/api/stock/summary?period=1d') return Promise.resolve({ data: { data: { jkse: { delta: 100, percentage: 1.43 }, portfolio: { delta: 2000, percentage: 10 }, positions: { BBCA: { delta: 2000, percentage: 10 } } } } })
       return Promise.reject(new Error('refresh down'))
     })
     render(<StockDashboard />)
@@ -65,4 +95,3 @@ describe('StockDashboard', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Failed to refresh prices!')
   })
 })
-

@@ -41,7 +41,7 @@ describe('Stock', () => {
       />
     )
     expect(screen.queryByText('Total Bought')).not.toBeInTheDocument()
-    expect(screen.queryByText('P/L')).not.toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: /Toggle P\/L display/i })).not.toBeInTheDocument()
   })
 
   it('wires up create/edit/delete handlers', async () => {
@@ -71,5 +71,12 @@ describe('Stock', () => {
     // The row with no prices shows a dash in the P/L cell.
     expect(screen.getAllByText('-').length).toBeGreaterThan(0)
   })
-})
 
+  it('masks Rupiah P/L and total bought when requested', () => {
+    render(<Stock title="Portfolio" rows={[owned]} showOwnedColumns maskMoney {...handlers()} />)
+
+    expect(screen.getByText('••••••')).toBeInTheDocument()
+    expect(screen.getByText('Rp ••••••')).toBeInTheDocument()
+    expect(screen.getByText('10.00%')).toBeInTheDocument()
+  })
+})

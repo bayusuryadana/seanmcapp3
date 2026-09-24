@@ -15,6 +15,12 @@ func withStockURL(url string) func() {
 	return func() { stockURLTemplate = original }
 }
 
+func withJKSEURL(url string) func() {
+	original := jkseURL
+	jkseURL = url
+	return func() { jkseURL = original }
+}
+
 func TestStockGetPrice(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"chart":{"result":[{"meta":{"regularMarketPrice":1234}}]}}`))
@@ -46,4 +52,18 @@ func TestStockGetPriceRequestError(t *testing.T) {
 
 	_, err := (&StockClientImpl{Client: srv.Client()}).GetPrice("BBCA")
 	assert.Error(t, err)
+}
+
+func TestStockGetJKSE(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Equal(t, "/%5EJKSE", r.URL.EscapedPath())
+		_, _ = w.Write([]byte(`{"chart":{"result":[{"meta":{"regularMarketPrice":7123.45,"previousClose":7000.00}}]}}`))
+	}))
+	defer srv.Close()
+	defer withJKSEURL(srv.URL + "/%5EJKSE")()
+
+	quote, err := (&StockClientImpl{Client: srv.Client()}).GetJKSE()
+	require.NoError(t, err)
+	assert.Equal(t, 7123.45, quote.CurrentPrice)
+	assert.Equal(t, 7000.0, quote.PreviousClose)
 }
