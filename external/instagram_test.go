@@ -13,65 +13,29 @@ import (
 
 func instagramTestClient(t *testing.T) *InstagramClientImpl {
 	t.Helper()
-	client, err := tls_client.NewHttpClient(
-		tls_client.NewNoopLogger(),
-		tls_client.WithTimeoutSeconds(15),
-		tls_client.WithClientProfile(profiles.Chrome_144),
-		tls_client.WithNotFollowRedirects(),
-		tls_client.WithCookieJar(tls_client.NewCookieJar()),
-	)
+	client, err := tls_client.NewHttpClient(tls_client.NewNoopLogger(), tls_client.WithClientProfile(profiles.Chrome_144))
 	require.NoError(t, err)
 	return &InstagramClientImpl{Client: client}
 }
 
-func TestInstagramGetOK(t *testing.T) {
-	requests := 0
+func TestInstagramGetIsUnauthenticated(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		requests++
-		if requests == 1 {
-			assert.Contains(t, r.Header.Get("Cookie"), "sessionid=sid")
-			assert.Equal(t, "csrf", r.Header.Get("X-CSRFToken"))
-		} else {
-			assert.Contains(t, r.Header.Get("Cookie"), "sessionid=new-sid")
-			assert.Equal(t, "new-csrf", r.Header.Get("X-CSRFToken"))
-		}
+		assert.Empty(t, r.Header.Get("Cookie"))
+		assert.Empty(t, r.Header.Get("X-CSRFToken"))
+		assert.NotEmpty(t, r.Header.Get("X-IG-App-ID"))
 		_, _ = w.Write([]byte(`{"ok":true}`))
 	}))
 	defer srv.Close()
 
-	client := instagramTestClient(t)
-	client.SetCredentials("sid", "csrf")
-	body, err := client.Get(srv.URL)
+	body, err := instagramTestClient(t).Get(srv.URL)
 	require.NoError(t, err)
 	assert.JSONEq(t, `{"ok":true}`, string(body))
-
-	client.SetCredentials("new-sid", "new-csrf")
-	_, err = client.Get(srv.URL)
-	require.NoError(t, err)
 }
 
-func TestInstagramGetUnauthorized(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusUnauthorized)
-	}))
+func TestInstagramGetReportsUnexpectedStatus(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusForbidden) }))
 	defer srv.Close()
-
-	client := instagramTestClient(t)
-	client.SetCredentials("sid", "csrf")
-	_, err := client.Get(srv.URL)
-	require.Error(t, err)
-	assert.ErrorIs(t, err, ErrSessionExpired)
-}
-
-func TestInstagramGetUnexpectedStatus(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusInternalServerError)
-	}))
-	defer srv.Close()
-
-	client := instagramTestClient(t)
-	client.SetCredentials("sid", "csrf")
-	_, err := client.Get(srv.URL)
+	_, err := instagramTestClient(t).Get(srv.URL)
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unexpected status")
 }
