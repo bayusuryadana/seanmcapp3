@@ -50,3 +50,19 @@ func TestProgressionHelpers(t *testing.T) {
 	require.Len(t, monthly, 2)
 	assert.Equal(t, "2026-02-09", monthly[1].Date)
 }
+
+func TestPriceCacheLongPeriods(t *testing.T) {
+	now := time.Now()
+	history := make([]external.HistoricalPrice, 401)
+	for i := range history {
+		history[i] = external.HistoricalPrice{Date: now.AddDate(0, 0, i-400), Close: float64(100 + i)}
+	}
+	cache := newPriceCache()
+	cache.put("BBCA", history)
+
+	for _, period := range []string{"1mo", "3mo", "6mo", "1y", "ytd"} {
+		latest, reference, err := cache.prices("BBCA", period)
+		require.NoError(t, err, period)
+		assert.Greater(t, latest, reference, period)
+	}
+}

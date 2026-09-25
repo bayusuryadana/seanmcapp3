@@ -80,6 +80,55 @@ func TestStockSummaryAndProgression(t *testing.T) {
 	assert.Error(t, err)
 }
 
+func TestStockInitializesAndCachesHistory(t *testing.T) {
+	stocks := []repository.Stock{{Name: "BBCA", Status: true, Lot: ptr[int64](1)}}
+	marketHistory := history(100, 101, 102)
+	client := &fakeStockClient{history: marketHistory}
+	svc := &StockServiceImpl{
+		StockRepo:   &fakeStockRepo{getAllFn: func() ([]repository.Stock, error) { return stocks, nil }},
+		StockClient: client,
+		priceCache:  nil,
+	}
+
+	svc.InitializeSnapshots()
+	require.NotNil(t, svc.priceCache)
+	assert.Len(t, svc.priceCache.get("BBCA"), 3)
+	assert.Len(t, svc.priceCache.get("^JKSE"), 3)
+	assert.Contains(t, client.calls, "BBCA")
+}
+
+func TestStockProgressionErrors(t *testing.T) {
+	repo := &fakeStockRepo{getAllFn: func() ([]repository.Stock, error) { return nil, nil }}
+	svc := &StockServiceImpl{StockRepo: repo}
+	_, err := svc.GetProgression("5d")
+	assert.Error(t, err)
+
+	svc.priceCache = newPriceCache()
+	svc.priceCache.put("^JKSE", history(100, 101))
+	_, err = svc.GetProgression("5d")
+	assert.Error(t, err)
+}
+
+func TestHistoryForPeriodAndPortfolioValue(t *testing.T) {
+	now := time.Now()
+	points := []external.HistoricalPrice{
+		{Date: now.AddDate(-1, 0, 0), Close: 90},
+		{Date: now.AddDate(0, -6, 0), Close: 95},
+		{Date: now.AddDate(0, -1, 0), Close: 100},
+		{Date: now, Close: 110},
+	}
+	for _, period := range []string{"1mo", "3mo", "6mo", "1y", "ytd"} {
+		assert.NotEmpty(t, historyForPeriod(points, period), period)
+	}
+
+	stocks := []repository.Stock{{Name: "BBCA", Status: true, Lot: ptr[int64](2)}}
+	value, ok := portfolioValueAt(stocks, map[string][]external.HistoricalPrice{"BBCA": points}, now)
+	assert.True(t, ok)
+	assert.Equal(t, 22000.0, value)
+	_, ok = portfolioValueAt(stocks, map[string][]external.HistoricalPrice{}, now)
+	assert.False(t, ok)
+}
+
 func TestStockCreateValidation(t *testing.T) {
 	svc := &StockServiceImpl{StockRepo: &fakeStockRepo{
 		createFn: func(s repository.Stock) (string, error) { return s.Name, nil },
