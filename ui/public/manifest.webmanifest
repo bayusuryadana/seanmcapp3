@@ -2,7 +2,7 @@
   "name": "Seanmc Wallet",
   "short_name": "Sean Wallet",
   "description": "Personal wallet and stock portfolio dashboard.",
-  "start_url": "/",
+  "start_url": "/wallet",
   "scope": "/",
   "display": "standalone",
   "background_color": "#f5f7fa",

@@ -56,6 +56,7 @@ export const WalletLogin = () => {
               minHeight: { xs: 'calc(100dvh - 56px - env(safe-area-inset-top))', sm: 'calc(100dvh - 64px)' },
               marginTop: { xs: 'calc(56px + env(safe-area-inset-top))', sm: 8 },
               padding: { xs: 2, sm: 4 },
+              pt: { xs: 8, sm: 12 },
               justifyContent: 'flex-start',
             }}>
               <Paper sx={{ p: { xs: 2.5, sm: 3 }, width: '100%', maxWidth: 400, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
