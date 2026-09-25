@@ -30,13 +30,14 @@ export const WalletAppBar = (props: WalletAppBarProps) => {
         <Typography component="h1" variant="h6" color="inherit" noWrap sx={{ mr: { xs: 1, sm: 3 }, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
           Seanmcwallet
         </Typography>
-        <Box sx={{ flexGrow: 1, display: { xs: 'none', sm: 'flex' }, gap: 1 }}>
+        <Box sx={{ flexGrow: 1, display: 'flex', gap: 1 }}>
           {navItems.map((item) => (
             <Button
               key={item.path}
               color="inherit"
               onClick={() => navigate(item.path)}
               sx={{
+                display: { xs: 'none', sm: 'inline-flex' },
                 fontWeight: location.pathname === item.path ? 'bold' : 'normal',
                 borderBottom: location.pathname === item.path ? '2px solid' : '2px solid transparent',
                 borderRadius: 0,
