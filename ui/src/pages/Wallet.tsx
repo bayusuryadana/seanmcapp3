@@ -16,7 +16,7 @@ export const Wallet = () => {
             <CssBaseline />
             <WalletAppBar logoutHandler={logoutHandler} />
             <Box component="main" sx={mainContentBoxStyle}>
-              <Toolbar />{/* this Toolbar is supposed for bufffer below the real AppBar */}
+              <Toolbar sx={{ minHeight: { xs: 'calc(56px + env(safe-area-inset-top)) !important', sm: '64px !important' } }} />
               <Outlet />
             </Box>
           </Box>

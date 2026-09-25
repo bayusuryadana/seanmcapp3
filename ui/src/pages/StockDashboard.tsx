@@ -117,10 +117,10 @@ export const StockDashboard = () => {
 
   return (
     <>
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Container maxWidth="lg" sx={{ mt: { xs: 2, sm: 4 }, mb: { xs: 2, sm: 4 }, px: { xs: 2, sm: 3 } }}>
         <AppAlert alert={alert} sx={{ mb: 2 }} />
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1, mb: 2 }}>
+          <Box sx={{ display: 'flex', overflowX: 'auto', whiteSpace: 'nowrap', WebkitOverflowScrolling: 'touch', flexGrow: 1 }}>
             {['all', '1d', '5d', '1mo', '3mo', '6mo', '1y', 'ytd'].map((item) => <Button key={item} size="small" variant={tablePeriod === item ? 'contained' : 'text'} onClick={() => changeTablePeriod(item)}>{item === 'all' ? 'Overall' : item.toUpperCase()}</Button>)}
           </Box>
           <Stack direction="row" spacing={0.5} alignItems="center">
@@ -134,7 +134,7 @@ export const StockDashboard = () => {
               onClick={refreshPrices}
               disabled={refreshing}
             >
-              {refreshing ? 'Refreshing...' : 'Refresh prices'}
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>{refreshing ? 'Refreshing...' : 'Refresh prices'}</Box>
             </Button>
           </Stack>
         </Box>
