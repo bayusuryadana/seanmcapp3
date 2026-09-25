@@ -9,6 +9,14 @@ import { StrictMode } from 'react'
 import { WalletDashboard } from './pages/WalletDashboard'
 import { StockDashboard } from './pages/StockDashboard'
 
+if (import.meta.env.PROD && 'serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((error) => {
+      console.error('Service worker registration failed:', error)
+    })
+  })
+}
+
 const router = createBrowserRouter([
   {
     path: "/",

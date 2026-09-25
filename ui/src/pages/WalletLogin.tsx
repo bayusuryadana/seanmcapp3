@@ -40,8 +40,8 @@ export const WalletLogin = () => {
       <ThemeProvider theme={defaultTheme}>
         <Box sx={{ display: 'flex' }}>
           <CssBaseline />
-          <AppBar position="absolute">
-            <Toolbar sx={{ pr: '24px', }}>
+          <AppBar position="fixed">
+            <Toolbar sx={{ pr: { xs: 2, sm: 3 }, pt: 'env(safe-area-inset-top)' }}>
               <Typography component="h1" variant="h6" color="inherit" noWrap sx={{ flexGrow: 1 }}>
                 Seanmcwallet
               </Typography>
@@ -53,10 +53,12 @@ export const WalletLogin = () => {
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              marginTop: 8,
-              paddingTop: 8,
+              minHeight: { xs: 'calc(100dvh - 56px - env(safe-area-inset-top))', sm: 'calc(100dvh - 64px)' },
+              marginTop: { xs: 'calc(56px + env(safe-area-inset-top))', sm: 8 },
+              padding: { xs: 2, sm: 4 },
+              justifyContent: 'flex-start',
             }}>
-              <Paper sx={{p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center'}}>
+              <Paper sx={{ p: { xs: 2.5, sm: 3 }, width: '100%', maxWidth: 400, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                 <Avatar sx={{ m: 1, bgcolor: 'secondary.main' }}>
                   <LockOutlinedIcon />
                 </Avatar>

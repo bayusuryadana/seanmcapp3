@@ -51,7 +51,7 @@ export const WalletDashboard = () => {
 
   return (
     <>
-      <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
+      <Container maxWidth="lg" sx={{ mt: { xs: 2, sm: 4 }, mb: { xs: 2, sm: 4 }, px: { xs: 2, sm: 3 } }}>
         <AppAlert alert={alert} sx={{ mb: 2 }} />
         <Grid container spacing={3}>
           {/* Saving accounts */}

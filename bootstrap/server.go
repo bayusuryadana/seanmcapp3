@@ -27,6 +27,13 @@ func InitRouter(mainServices MainServices, walletSettings util.WalletSettings) *
 
 	r.GET("/", serveIndex)
 	r.Static("/static", util.GetFrontendPath()+"/static")
+	// PWA assets are generated into the frontend build root, not /static.
+	r.StaticFile("/manifest.webmanifest", util.GetFrontendPath()+"/manifest.webmanifest")
+	r.StaticFile("/sw.js", util.GetFrontendPath()+"/sw.js")
+	r.StaticFile("/app-icon.svg", util.GetFrontendPath()+"/app-icon.svg")
+	r.StaticFile("/app-icon-192.png", util.GetFrontendPath()+"/app-icon-192.png")
+	r.StaticFile("/app-icon-512.png", util.GetFrontendPath()+"/app-icon-512.png")
+	r.StaticFile("/apple-touch-icon.png", util.GetFrontendPath()+"/apple-touch-icon.png")
 	r.NoRoute(serveIndex)
 
 	api := r.Group("/api")
