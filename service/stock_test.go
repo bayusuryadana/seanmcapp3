@@ -2,12 +2,23 @@ package service
 
 import (
 	"errors"
+	"seanmcapp/external"
 	"seanmcapp/repository"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func history(closes ...float64) []external.HistoricalPrice {
+	points := make([]external.HistoricalPrice, 0, len(closes))
+	start := time.Now().AddDate(0, 0, -len(closes)+1)
+	for i, close := range closes {
+		points = append(points, external.HistoricalPrice{Date: start.AddDate(0, 0, i), Close: close})
+	}
+	return points
+}
 
 func TestStockGetAll(t *testing.T) {
 	repo := &fakeStockRepo{getAllFn: func() ([]repository.Stock, error) {
@@ -26,6 +37,96 @@ func TestStockGetAll(t *testing.T) {
 	repo.getAllFn = func() ([]repository.Stock, error) { return nil, errors.New("db down") }
 	_, err = svc.GetAll()
 	assert.Error(t, err)
+}
+
+func TestStockGetJKSE(t *testing.T) {
+	svc := &StockServiceImpl{StockClient: &fakeStockClient{jkse: external.IndexQuote{CurrentPrice: 7123.45, PreviousClose: 7000}}}
+
+	quote, err := svc.GetJKSE()
+	require.NoError(t, err)
+	assert.Equal(t, 7123.45, quote.CurrentPrice)
+	assert.Equal(t, 7000.0, quote.PreviousClose)
+}
+
+func TestStockSummaryAndProgression(t *testing.T) {
+	stocks := []repository.Stock{{Name: "BBCA", Status: true, Lot: ptr[int64](1)}}
+	svc := &StockServiceImpl{
+		StockRepo:  &fakeStockRepo{getAllFn: func() ([]repository.Stock, error) { return stocks, nil }},
+		priceCache: newPriceCache(),
+	}
+	indexHistory := history(100, 101, 102, 103, 104, 105, 106)
+	stockHistory := make([]external.HistoricalPrice, len(indexHistory))
+	for i, point := range indexHistory {
+		stockHistory[i] = external.HistoricalPrice{Date: point.Date, Close: point.Close * 10}
+	}
+	svc.priceCache.put("^JKSE", indexHistory)
+	svc.priceCache.put("BBCA", stockHistory)
+
+	summary, err := svc.GetSummary("1d")
+	require.NoError(t, err)
+	assert.Equal(t, 1.0, summary.JKSE.Delta)
+	assert.InDelta(t, 0.952, summary.Portfolio.Percentage, 0.001)
+	assert.Equal(t, 1000.0, summary.Positions["BBCA"].Delta)
+
+	progression, err := svc.GetProgression("all")
+	require.NoError(t, err)
+	require.Len(t, progression, 6)
+	assert.Equal(t, 0.0, progression[0].Index)
+	assert.InDelta(t, 4.95, progression[len(progression)-1].Portfolio, 0.01)
+
+	_, err = svc.GetSummary("all")
+	assert.Error(t, err)
+	_, err = svc.GetProgression("bad")
+	assert.Error(t, err)
+}
+
+func TestStockInitializesAndCachesHistory(t *testing.T) {
+	stocks := []repository.Stock{{Name: "BBCA", Status: true, Lot: ptr[int64](1)}}
+	marketHistory := history(100, 101, 102)
+	client := &fakeStockClient{history: marketHistory}
+	svc := &StockServiceImpl{
+		StockRepo:   &fakeStockRepo{getAllFn: func() ([]repository.Stock, error) { return stocks, nil }},
+		StockClient: client,
+		priceCache:  nil,
+	}
+
+	svc.InitializeSnapshots()
+	require.NotNil(t, svc.priceCache)
+	assert.Len(t, svc.priceCache.get("BBCA"), 3)
+	assert.Len(t, svc.priceCache.get("^JKSE"), 3)
+	assert.Contains(t, client.calls, "BBCA")
+}
+
+func TestStockProgressionErrors(t *testing.T) {
+	repo := &fakeStockRepo{getAllFn: func() ([]repository.Stock, error) { return nil, nil }}
+	svc := &StockServiceImpl{StockRepo: repo}
+	_, err := svc.GetProgression("5d")
+	assert.Error(t, err)
+
+	svc.priceCache = newPriceCache()
+	svc.priceCache.put("^JKSE", history(100, 101))
+	_, err = svc.GetProgression("5d")
+	assert.Error(t, err)
+}
+
+func TestHistoryForPeriodAndPortfolioValue(t *testing.T) {
+	now := time.Now()
+	points := []external.HistoricalPrice{
+		{Date: now.AddDate(-1, 0, 0), Close: 90},
+		{Date: now.AddDate(0, -6, 0), Close: 95},
+		{Date: now.AddDate(0, -1, 0), Close: 100},
+		{Date: now, Close: 110},
+	}
+	for _, period := range []string{"1mo", "3mo", "6mo", "1y", "ytd"} {
+		assert.NotEmpty(t, historyForPeriod(points, period), period)
+	}
+
+	stocks := []repository.Stock{{Name: "BBCA", Status: true, Lot: ptr[int64](2)}}
+	value, ok := portfolioValueAt(stocks, map[string][]external.HistoricalPrice{"BBCA": points}, now)
+	assert.True(t, ok)
+	assert.Equal(t, 22000.0, value)
+	_, ok = portfolioValueAt(stocks, map[string][]external.HistoricalPrice{}, now)
+	assert.False(t, ok)
 }
 
 func TestStockCreateValidation(t *testing.T) {

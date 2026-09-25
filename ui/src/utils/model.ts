@@ -51,3 +51,20 @@ export type WalletStock = {
   buy_price?: number;
   lot?: number;
 }
+
+export type DashboardPerformance = {
+  delta: number;
+  percentage: number;
+}
+
+export type StockSummary = {
+  jkse: DashboardPerformance;
+  portfolio: DashboardPerformance;
+  positions: Record<string, DashboardPerformance>;
+}
+
+export type StockProgressPoint = {
+  date: string;
+  index: number;
+  portfolio: number;
+}

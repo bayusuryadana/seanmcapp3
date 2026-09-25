@@ -86,6 +86,7 @@ func GetMainServices(settings util.AppsSettings) (MainServices, *sql.DB) {
 		},
 	}
 	stockService := &service.StockServiceImpl{StockRepo: stockRepo, StockClient: stockClient, TelegramClient: telegramClient, PersonalChatID: settings.TelegramSettings.PersonalChatID}
+	stockService.InitializeSnapshots()
 	instagramService := &service.InstagramServiceImpl{InstagramAccountRepo: instagramAccountRepo, InstagramClient: instagramClient, TelegramClient: telegramClient, PersonalChatID: settings.TelegramSettings.PersonalChatID}
 	telegramUpdateHandler := &service.TelegramCommandDispatcher{
 		Botname:  settings.TelegramSettings.Botname,
