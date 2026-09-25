@@ -103,10 +103,10 @@ export const StockDashboard = () => {
     return sum + (stock.buy_price * stock.lot * 100)
   }, 0)
   const remainingMoney = STOCK_POOL_MONEY - totalBought
-  const jkseDelta = summary?.jkse.delta
-  const jkseDeltaPercentage = summary?.jkse.percentage
-  const portfolioDelta = summary?.portfolio.delta
-  const portfolioDeltaPercentage = summary?.portfolio.percentage
+  const jkseDelta = summary?.jkse?.delta
+  const jkseDeltaPercentage = summary?.jkse?.percentage
+  const portfolioDelta = summary?.portfolio?.delta
+  const portfolioDeltaPercentage = summary?.portfolio?.percentage
 
   const signedNumber = (value: number) => `${value > 0 ? '+' : ''}${value.toLocaleString()}`
   const signedPercentage = (value: number) => `${value > 0 ? '+' : ''}${value.toFixed(2)}%`

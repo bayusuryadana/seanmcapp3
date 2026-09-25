@@ -17,6 +17,7 @@ describe('StockDashboard', () => {
       if (url === '/api/stock/getAll') return Promise.resolve({ data: { data: stocks } })
       if (url === '/api/stock/refresh') return Promise.resolve({ data: { data: stocks } })
       if (url === '/api/stock/summary?period=1d') return Promise.resolve({ data: { data: { jkse: { delta: 100, percentage: 1.43 }, portfolio: { delta: 2000, percentage: 10 }, positions: { BBCA: { delta: 2000, percentage: 10 } } } } })
+      if (url === '/api/stock/progression?period=all') return Promise.resolve({ data: { data: [{ date: '2026-09-20', index: 0, portfolio: 0 }, { date: '2026-09-21', index: 1, portfolio: 2 }] } })
       return Promise.resolve({ data: { data: [] } })
     })
   })
@@ -46,12 +47,27 @@ describe('StockDashboard', () => {
     expect(screen.getByText('BBCA')).toBeVisible()
   })
 
+  it('collapses the whole summary and changes its selected range', async () => {
+    render(<StockDashboard />)
+    await screen.findByText('Progression')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Summary' }))
+    expect(screen.queryByText('Progression')).not.toBeVisible()
+
+    await userEvent.click(screen.getByRole('button', { name: 'Summary' }))
+    expect(screen.getByText('Progression')).toBeVisible()
+    await userEvent.click(screen.getByRole('button', { name: '5D' }))
+    await waitFor(() => expect(mockedApi.post).toHaveBeenCalledWith('/api/stock/progression?period=5d', {}))
+    await waitFor(() => expect(mockedApi.post).toHaveBeenCalledWith('/api/stock/summary?period=5d', {}))
+  })
+
   it('refreshes prices', async () => {
     render(<StockDashboard />)
     await screen.findByText('BBCA')
 
     await userEvent.click(screen.getByRole('button', { name: /Refresh prices/i }))
     await waitFor(() => expect(mockedApi.post).toHaveBeenCalledWith('/api/stock/refresh', {}))
+    await waitFor(() => expect(mockedApi.post).toHaveBeenCalledWith('/api/stock/progression?period=all', {}))
   })
 
   it('masks and restores the requested money values', async () => {

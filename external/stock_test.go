@@ -21,6 +21,12 @@ func withJKSEURL(url string) func() {
 	return func() { jkseURL = original }
 }
 
+func withHistoryURL(url string) func() {
+	original := historyURLTemplate
+	historyURLTemplate = url
+	return func() { historyURLTemplate = original }
+}
+
 func TestStockGetPrice(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"chart":{"result":[{"meta":{"regularMarketPrice":1234}}]}}`))
@@ -66,4 +72,23 @@ func TestStockGetJKSE(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 7123.45, quote.CurrentPrice)
 	assert.Equal(t, 7000.0, quote.PreviousClose)
+}
+
+func TestStockHistory(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		assert.Contains(t, r.URL.String(), "interval=1d")
+		_, _ = w.Write([]byte(`{"chart":{"result":[{"timestamp":[1704067200,1704153600],"indicators":{"quote":[{"close":[100.5,101.25]}]}}]}}`))
+	}))
+	defer srv.Close()
+	defer withHistoryURL(srv.URL + "/{{symbol}}?range=1y&interval=1d")()
+
+	client := &StockClientImpl{Client: srv.Client()}
+	stock, err := client.GetStockHistory("BBCA")
+	require.NoError(t, err)
+	require.Len(t, stock, 2)
+	assert.Equal(t, 101.25, stock[1].Close)
+
+	index, err := client.GetJKSEHistory()
+	require.NoError(t, err)
+	assert.Len(t, index, 2)
 }

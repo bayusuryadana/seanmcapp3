@@ -5,10 +5,20 @@ import (
 	"seanmcapp/external"
 	"seanmcapp/repository"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
+
+func history(closes ...float64) []external.HistoricalPrice {
+	points := make([]external.HistoricalPrice, 0, len(closes))
+	start := time.Now().AddDate(0, 0, -len(closes)+1)
+	for i, close := range closes {
+		points = append(points, external.HistoricalPrice{Date: start.AddDate(0, 0, i), Close: close})
+	}
+	return points
+}
 
 func TestStockGetAll(t *testing.T) {
 	repo := &fakeStockRepo{getAllFn: func() ([]repository.Stock, error) {
@@ -36,6 +46,38 @@ func TestStockGetJKSE(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, 7123.45, quote.CurrentPrice)
 	assert.Equal(t, 7000.0, quote.PreviousClose)
+}
+
+func TestStockSummaryAndProgression(t *testing.T) {
+	stocks := []repository.Stock{{Name: "BBCA", Status: true, Lot: ptr[int64](1)}}
+	svc := &StockServiceImpl{
+		StockRepo:  &fakeStockRepo{getAllFn: func() ([]repository.Stock, error) { return stocks, nil }},
+		priceCache: newPriceCache(),
+	}
+	indexHistory := history(100, 101, 102, 103, 104, 105, 106)
+	stockHistory := make([]external.HistoricalPrice, len(indexHistory))
+	for i, point := range indexHistory {
+		stockHistory[i] = external.HistoricalPrice{Date: point.Date, Close: point.Close * 10}
+	}
+	svc.priceCache.put("^JKSE", indexHistory)
+	svc.priceCache.put("BBCA", stockHistory)
+
+	summary, err := svc.GetSummary("1d")
+	require.NoError(t, err)
+	assert.Equal(t, 1.0, summary.JKSE.Delta)
+	assert.InDelta(t, 0.952, summary.Portfolio.Percentage, 0.001)
+	assert.Equal(t, 1000.0, summary.Positions["BBCA"].Delta)
+
+	progression, err := svc.GetProgression("all")
+	require.NoError(t, err)
+	require.Len(t, progression, 6)
+	assert.Equal(t, 0.0, progression[0].Index)
+	assert.InDelta(t, 4.95, progression[len(progression)-1].Portfolio, 0.01)
+
+	_, err = svc.GetSummary("all")
+	assert.Error(t, err)
+	_, err = svc.GetProgression("bad")
+	assert.Error(t, err)
 }
 
 func TestStockCreateValidation(t *testing.T) {
